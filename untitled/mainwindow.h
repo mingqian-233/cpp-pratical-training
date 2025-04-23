@@ -4,7 +4,7 @@
 #include <QWidget>
 #include <QPushButton>
 #include "backgroundwidget.h"
-
+#include "gameui.h"
 #include "savemanager.h"
 
 class MainWindow : public QWidget
@@ -49,6 +49,10 @@ private:
     SaveManager *m_saveManager;
     void showSaveSelectionDialog();
     void updateGameState();
+
+private:
+    GameUI* m_gameUI;  // 添加这一行
+
 
 };
 

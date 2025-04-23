@@ -7,5 +7,7 @@
         <file>images/i_sad.png</file>
         <file>images/i_smile.png</file>
         <file>images/i_surprise.png</file>
+        <file>data/medicine_name.txt</file>
+        <file>images/drawer.png</file>
     </qresource>
 </RCC>

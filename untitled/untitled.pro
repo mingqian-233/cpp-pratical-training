@@ -11,7 +11,13 @@ QT += core gui widgets multimedia
 # 源文件列表（所有 .cpp 文件）
 SOURCES += main.cpp \
            backgroundwidget.cpp \
+           cabinet.cpp \
+           drawer.cpp \
+           gamemanager.cpp \
+           gameui.cpp \
            mainwindow.cpp \
+           medicine.cpp \
+           medicinelist.cpp \
            musicmanager.cpp \
            savemanager.cpp \
            saveselectiondialog.cpp \
@@ -19,7 +25,13 @@ SOURCES += main.cpp \
 
 # 头文件列表（所有 .h 文件）
 HEADERS += backgroundwidget.h \
+           cabinet.h \
+           drawer.h \
+           gamemanager.h \
+           gameui.h \
            mainwindow.h \
+           medicine.h \
+           medicinelist.h \
            musicmanager.h \
            savemanager.h \
            saveselectiondialog.h \
@@ -83,3 +95,5 @@ CONFIG(release, debug|release) {
 
 DISTFILES += \
     C:/Users/tomfa/Desktop/·踏情 (已合并).wav
+
+FORMS +=

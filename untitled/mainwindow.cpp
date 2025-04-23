@@ -6,7 +6,7 @@
 #include <QVBoxLayout>
 #include <QResizeEvent>
 #include <QDebug>
-
+#include "gamemanager.h"
 // 初始化静态成员变量
 MainWindow* MainWindow::m_instance = nullptr;
 
@@ -135,7 +135,11 @@ void MainWindow::onStoryModeClicked()
 
 void MainWindow::onChallengeModeClicked()
 {
-   // 挑战模式处理代码
+    GameManager* manager = GameManager::instance();
+    manager->setGameUI(m_gameUI);
+    // 初始化游戏(行数, 列数, 药材数量, 初始打开抽屉数, 随机操作步数)
+    manager->initializeGame(5, 8, 10, 5, 10);
+
 }
 
 void MainWindow::onCustomModeClicked()
