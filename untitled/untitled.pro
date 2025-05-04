@@ -12,6 +12,7 @@ QT += core gui widgets multimedia
 SOURCES += main.cpp \
            backgroundwidget.cpp \
            cabinet.cpp \
+           challengemode.cpp \
            drawer.cpp \
            gamemanager.cpp \
            gameui.cpp \
@@ -26,6 +27,7 @@ SOURCES += main.cpp \
 # 头文件列表（所有 .h 文件）
 HEADERS += backgroundwidget.h \
            cabinet.h \
+           challengemode.h \
            drawer.h \
            gamemanager.h \
            gameui.h \

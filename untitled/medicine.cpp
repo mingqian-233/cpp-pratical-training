@@ -6,10 +6,10 @@
 #include <QTextStream>
 
 // Medicine类构造函数
-Medicine::Medicine(const std::string& name) : name(name) {}
+Medicine::Medicine(const QString& name) : name(name) {}
 
 // 获取药材名称
-std::string Medicine::getName() const {
+QString Medicine::getName() const {
     return name;
 }
 
@@ -25,10 +25,10 @@ bool MedicineManager::initialize() {
 }
 
 // 从文件加载药材
-bool MedicineManager::loadMedicinesFromFile(const std::string& filename) {
-    QFile file(QString::fromStdString(filename));
+bool MedicineManager::loadMedicinesFromFile(const QString& filename) {
+    QFile file(filename);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        std::cerr << "无法打开文件: " << filename << std::endl;
+        std::cerr << "无法打开文件" << std::endl;
         return false;
     }
 
@@ -39,7 +39,7 @@ bool MedicineManager::loadMedicinesFromFile(const std::string& filename) {
     while (!in.atEnd()) {
         QString line = in.readLine().trimmed();
         if (!line.isEmpty()) {
-            medicines.emplace_back(line.toStdString());
+            medicines.emplace_back(line);
         }
     }
 

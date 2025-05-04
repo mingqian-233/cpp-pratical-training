@@ -16,7 +16,7 @@ public:
     const Medicine& getSecondMedicine() const;
 
     // 检查抽屉是否包含指定药材
-    bool containsMedicine(const std::string& medicineName) const;
+    bool containsMedicine(const QString& medicineName) const;
 
     // 获取抽屉状态
     bool isOpen() const;

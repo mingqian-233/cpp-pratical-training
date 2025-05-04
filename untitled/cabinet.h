@@ -4,19 +4,20 @@
 #include "Drawer.h"
 #include <vector>
 #include <map>
-#include <string>
 #include <QObject>
-
-// 使用QObject作为基类，以便支持信号和槽机制
+#include <random>
+// 使用QObject作为基类s，以便支持信号和槽机制
 class Cabinet : public QObject {
     Q_OBJECT
+private:
+    std::mt19937 rng; // 随机数生成器
 
 public:
     // 构造函数
     explicit Cabinet(QObject* parent = nullptr);
 
     // 初始化药柜，创建指定数量的抽屉
-    void initialize(int rows, int columns);
+    void initialize(int rows, int columns,int medicineTypeCount);
 
     // 获取指定位置的抽屉
     Drawer* getDrawer(int row, int col);
@@ -25,14 +26,13 @@ public:
     const std::vector<Drawer>& getAllDrawers() const;
 
     // 处理药材被点击的事件
-    void onMedicineClicked(const std::string& medicineName);
+    void onMedicineClicked(const QString& medicineName);
 
-    // 检查当前开启的抽屉中的药材是否符合目标清单
-    bool checkMedicineList(const std::map<std::string, int>& targetList) const;
 
     // 获取当前开启的抽屉中的药材及数量
-    std::map<std::string, int> getCurrentMedicines() const;
-
+    std::map<QString, int > getCurrentMedicines() const;
+    // 获取药材清单
+    std::map<QString, std::pair<int,int> > getMedicineList() const;
     // 获取药柜的行数和列数
     int getRows() const;
     int getColumns() const;
@@ -56,7 +56,7 @@ private:
     int columns;                  // 药柜列数
 
     // 药材名称到包含该药材的抽屉索引的映射
-    std::map<std::string, std::vector<int>> medicineToDrawers;
+    std::map<QString, std::vector<int>> medicineToDrawers;
 
     // 初始化药材到抽屉的映射
     void initializeMedicineToDrawersMap();

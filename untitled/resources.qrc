@@ -9,5 +9,6 @@
         <file>images/i_surprise.png</file>
         <file>data/medicine_name.txt</file>
         <file>images/drawer.png</file>
+        <file>images/bg_challenge.png</file>
     </qresource>
 </RCC>

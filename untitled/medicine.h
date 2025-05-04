@@ -1,19 +1,18 @@
 #ifndef MEDICINE_H
 #define MEDICINE_H
 
-#include <string>
 #include <vector>
-
+#include<QString>
 class Medicine {
 public:
     // 构造函数
-    Medicine(const std::string& name);
+    Medicine(const QString& name);
 
             // 获取药材名称
-    std::string getName() const;
+    QString getName() const;
 
 private:
-    std::string name; // 药材名称
+    QString name; // 药材名称
 };
 
 
@@ -43,10 +42,10 @@ private:
     MedicineManager() = default;
 
     // 从文件加载药材
-    bool loadMedicinesFromFile(const std::string& filename);
+    bool loadMedicinesFromFile(const QString& filename);
 
     std::vector<Medicine> medicines; // 药材列表
-    const std::string MEDICINE_FILE_PATH = ":/data/medicine_name.txt"; // 药材名称文件路径
+    const QString MEDICINE_FILE_PATH = ":/data/medicine_name.txt"; // 药材名称文件路径
 };
 
 

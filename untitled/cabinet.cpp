@@ -4,41 +4,54 @@
 #include <algorithm>
 #include <random>
 #include <QTimer>
-
+#include <QDebug>
 // 构造函数
 Cabinet::Cabinet(QObject* parent) : QObject(parent), rows(0), columns(0) {
+    std::random_device rd;
+    rng.seed(rd());
 }
 
 // 初始化药柜
-void Cabinet::initialize(int rows, int columns) {
+// 初始化药柜，添加药材种类数参数
+void Cabinet::initialize(int rows, int columns, int medicineTypeCount) {
+
     this->rows = rows;
     this->columns = columns;
     drawers.clear();
     medicineToDrawers.clear();
 
-    // 获取药材管理器实例
+            // 获取药材管理器实例
     MedicineManager& medicineManager = MedicineManager::getInstance();
 
-    // 计算需要的药材数量（每个抽屉2种，不重复）
+            // 计算需要的抽屉总数
     int totalDrawers = rows * columns;
-    int uniqueMedicinesNeeded = totalDrawers * 2;
 
-    // 获取足够的随机药材
-    std::vector<Medicine> randomMedicines;
+    // 确保请求的药材种类数量合理
+    const auto& allMedicines = medicineManager.getMedicines();
+    int availableMedicines = allMedicines.size();
+
+    // 如果请求的药材种类数超过可用药材，则使用所有可用药材
+    medicineTypeCount = std::min(medicineTypeCount, availableMedicines);
+    // 确保药材种类数至少为2（每个抽屉需要两种不同药材）
+    medicineTypeCount = std::max(medicineTypeCount, 2);
+
     try {
-        // 如果药材库中的药材不够，则使用所有可用药材并允许重复
-        const auto& allMedicines = medicineManager.getMedicines();
-        if (allMedicines.size() >= uniqueMedicinesNeeded) {
-            randomMedicines = medicineManager.getRandomMedicines(uniqueMedicinesNeeded);
-        } else {
-            // 获取所有可用药材
-            randomMedicines = allMedicines;
+        // 首先选择指定数量的药材种类
+        std::vector<Medicine> selectedMedicineTypes = medicineManager.getRandomMedicines(medicineTypeCount);
 
-            // 如果药材不够，则随机选择一些重复使用
-            while (randomMedicines.size() < uniqueMedicinesNeeded) {
-                const Medicine& randomMed = medicineManager.getRandomMedicine();
-                randomMedicines.push_back(randomMed);
-            }
+        // 创建抽屉并分配药材
+        for (int i = 0; i < totalDrawers; ++i) {
+            // 从选定的药材类型中随机选择两种不同的药材
+            int firstIndex = std::uniform_int_distribution<>(0, medicineTypeCount-1)(rng);
+            int secondIndex;
+            do {
+                secondIndex = std::uniform_int_distribution<>(0, medicineTypeCount-1)(rng);
+            } while (secondIndex == firstIndex);
+
+            Medicine firstMed = selectedMedicineTypes[firstIndex];
+            Medicine secondMed = selectedMedicineTypes[secondIndex];
+
+            drawers.emplace_back(firstMed, secondMed, false); // 默认抽屉关闭
         }
     } catch (const std::exception& e) {
         // 处理异常，例如药材列表为空
@@ -46,14 +59,7 @@ void Cabinet::initialize(int rows, int columns) {
         return;
     }
 
-    // 创建抽屉并分配药材
-    for (int i = 0; i < totalDrawers; ++i) {
-        Medicine firstMed = randomMedicines[i * 2];
-        Medicine secondMed = randomMedicines[i * 2 + 1];
-        drawers.emplace_back(firstMed, secondMed, false); // 默认抽屉关闭
-    }
-
-    // 初始化药材到抽屉的映射
+            // 初始化药材到抽屉的映射
     initializeMedicineToDrawersMap();
 }
 
@@ -75,7 +81,7 @@ const std::vector<Drawer>& Cabinet::getAllDrawers() const {
 }
 
 // 处理药材被点击的事件
-void Cabinet::onMedicineClicked(const std::string& medicineName) {
+void Cabinet::onMedicineClicked(const QString& medicineName) {
     // 查找包含该药材的所有抽屉
     auto it = medicineToDrawers.find(medicineName);
     if (it == medicineToDrawers.end()) {
@@ -84,64 +90,59 @@ void Cabinet::onMedicineClicked(const std::string& medicineName) {
 
     const auto& drawerIndices = it->second;
 
-    // 切换每个包含该药材的抽屉的状态
+    // 先收集所有需要改变状态的抽屉
+    QVector<QPair<int, int>> drawersToChange;
     for (int index : drawerIndices) {
         if (index >= 0 && index < static_cast<int>(drawers.size())) {
-            drawers[index].toggleState();
-
-            // 计算行列位置
             int row = index / columns;
             int col = index % columns;
-
-            // 发出抽屉状态改变的信号
-            emit drawerStateChanged(row, col, drawers[index].isOpen());
+            drawersToChange.append(qMakePair(row, col));
         }
     }
 
-    // 使用QTimer确保所有状态变化信号都已处理后再发出完成信号
-    QTimer::singleShot(0, this, &Cabinet::allStateChangesCompleted);
+            // 批量处理状态改变
+    for (const auto& pos : drawersToChange) {
+        int index = pos.first * columns + pos.second;
+        drawers[index].toggleState();
+        emit drawerStateChanged(pos.first, pos.second, drawers[index].isOpen());
+    }
+
+            // 所有状态都已改变，发出完成信号
+    emit allStateChangesCompleted();
 }
 
-// 检查当前开启的抽屉中的药材是否符合目标清单
-bool Cabinet::checkMedicineList(const std::map<std::string, int>& targetList) const {
-    std::map<std::string, int> currentMedicines = getCurrentMedicines();
-
-    // 检查药材种类和数量是否一致
-    if (currentMedicines.size() != targetList.size()) {
-        return false;
+// 获取药材清单
+std::map<QString, std::pair<int,int>> Cabinet::getMedicineList() const {
+    std::map<QString, std::pair<int,int>> result;
+    for (const auto& drawer : drawers) {
+        bool r=drawer.isOpen();
+        const QString& firstName = drawer.getFirstMedicine().getName();
+        result[firstName].first+=r;
+        result[firstName].second+=r;
+        const QString& secondName = drawer.getSecondMedicine().getName();
+        result[secondName].first+=r;
+        result[secondName].second+=r;
     }
 
-    for (const auto& pair : targetList) {
-        const std::string& medicineName = pair.first;
-        int targetCount = pair.second;
-
-        auto it = currentMedicines.find(medicineName);
-        if (it == currentMedicines.end() || it->second != targetCount) {
-            return false;
-        }
-    }
-
-    return true;
+    return result;
 }
 
 // 获取当前开启的抽屉中的药材及数量
-std::map<std::string, int> Cabinet::getCurrentMedicines() const {
-    std::map<std::string, int> result;
-
+std::map<QString, int> Cabinet::getCurrentMedicines() const {
+    std::map<QString,int> result;
     for (const auto& drawer : drawers) {
-        if (drawer.isOpen()) {
-            // 增加第一个药材的计数
-            const std::string& firstName = drawer.getFirstMedicine().getName();
+        bool r=drawer.isOpen();
+        if(r){
+            const QString& firstName = drawer.getFirstMedicine().getName();
             result[firstName]++;
-
-            // 增加第二个药材的计数
-            const std::string& secondName = drawer.getSecondMedicine().getName();
+            const QString& secondName = drawer.getSecondMedicine().getName();
             result[secondName]++;
         }
     }
 
     return result;
 }
+
 
 // 获取药柜的行数
 int Cabinet::getRows() const {
@@ -199,11 +200,11 @@ void Cabinet::initializeMedicineToDrawersMap() {
         const Drawer& drawer = drawers[i];
 
         // 添加第一个药材的映射
-        const std::string& firstName = drawer.getFirstMedicine().getName();
+        const QString& firstName = drawer.getFirstMedicine().getName();
         medicineToDrawers[firstName].push_back(static_cast<int>(i));
 
         // 添加第二个药材的映射
-        const std::string& secondName = drawer.getSecondMedicine().getName();
+        const QString& secondName = drawer.getSecondMedicine().getName();
         medicineToDrawers[secondName].push_back(static_cast<int>(i));
     }
 }

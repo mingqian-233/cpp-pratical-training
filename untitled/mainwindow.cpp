@@ -1,16 +1,17 @@
+
+
 #include "mainwindow.h"
-#include "setting.h"
-#include "saveselectiondialog.h"
-#include <QApplication>
+
 #include <QPushButton>
 #include <QVBoxLayout>
-#include <QResizeEvent>
-#include <QDebug>
-#include "gamemanager.h"
-// 初始化静态成员变量
-MainWindow* MainWindow::m_instance = nullptr;
+#include <QMessageBox>
+#include <QApplication>
+#include "qtimer.h"
+#include "setting.h"
+#include "saveselectiondialog.h"
 
-// 获取单例实例的静态方法
+    MainWindow* MainWindow::m_instance = nullptr;
+
 MainWindow* MainWindow::instance()
 {
     if (!m_instance) {
@@ -20,173 +21,155 @@ MainWindow* MainWindow::instance()
 }
 
 MainWindow::MainWindow(QWidget *parent)
-    : QWidget(parent)
+    : QMainWindow(parent)
 {
-    // 创建背景控件（注意：不要将this作为parent）
-    backgroundWidget = new BackgroundWidget(this);
-
-            // 设置背景控件的尺寸
-    backgroundWidget->setGeometry(0, 0, width(), height());
-
-            // 将背景控件移到最底层
-    backgroundWidget->lower();
-
-            // 设置背景图片（不要加.png扩展名）
-    backgroundWidget->setBackground("bg_main");
-
     setupUI();
+    QTimer::singleShot(0, this, &MainWindow::showSaveSelectDialog);
 
-            // 设置一个合适的初始窗口大小
-    resize(800, 600);
-            // 显示存档选择对话框
-    showSaveSelectionDialog();
 }
+void MainWindow::showSaveSelectDialog()
+{
+    SaveSelectDialog* dialog = new SaveSelectDialog(this);
+    if (dialog->exec() == QDialog::Accepted) {
+        // 获取选择的存档
+        m_saveManager = dialog->getSaveManager();
 
+        // 如果成功加载存档，可以在这里更新UI或进行其他初始化
+        if (m_saveManager) {
+            QString playerName = m_saveManager->getPlayerName();
+            setWindowTitle(QString("本草华章：我是小药童 - %1").arg(playerName));
+        }
+    } else {
+        // 如果用户取消选择存档，可以选择退出游戏
+        QMessageBox::critical(this, "错误", "必须选择或创建存档才能开始游戏！");
+        QApplication::quit();
+    }
+
+    dialog->deleteLater();
+}
 MainWindow::~MainWindow()
 {
-    // Qt的父子对象系统会自动清理子控件，不需要手动删除
-    m_instance = nullptr;  // 清除静态指针
+    m_instance = nullptr;
 }
-
+void MainWindow::switchToMainPage()
+{
+    m_stackedWidget->setCurrentWidget(m_centralWidget);
+}
 void MainWindow::setupUI()
 {
-    // 设置窗口标题
-    setWindowTitle("我是小药童");
+    // 设置窗口属性
+    setWindowTitle("本草华章：我是小药童");
+    resize(1280, 720);
 
-            // 创建一个透明的容器来放置按钮
-    QWidget* container = new QWidget(this);
-    container->setObjectName("buttonContainer");
-    // 设置容器为透明，否则会遮挡背景
-    container->setAttribute(Qt::WA_TranslucentBackground);
+            // 创建QStackedWidget作为中央窗口部件
+    m_stackedWidget = new QStackedWidget(this);
+    setCentralWidget(m_stackedWidget);
 
-            // 创建按钮并设置固定大小
-    QPushButton* storyModeButton = new QPushButton("剧情模式", container);
-    QPushButton* challengeModeButton = new QPushButton("挑战模式", container);
-    QPushButton* customModeButton = new QPushButton("自定义模式", container);
-    QPushButton* settingsButton = new QPushButton("设置", container);
-    QPushButton* exitButton = new QPushButton("退出", container);
+            // 创建主页面
+    m_centralWidget = new QWidget();
 
-            // 设置按钮大小策略，使其可以随窗口变化
-    QList<QPushButton*> buttons = {storyModeButton, challengeModeButton,
-                                   customModeButton, settingsButton, exitButton};
+    // 创建并设置背景
+    m_backgroundWidget = new BackgroundWidget(m_centralWidget);
+    m_backgroundWidget->setBackground("bg_main");
 
-            // 为每个按钮设置大小和样式
-    for (QPushButton* btn : buttons) {
-        // 设置最小大小，确保按钮不会太小
-        btn->setMinimumSize(150, 40);
-        // 设置大小策略，使按钮可以随窗口变化
-        btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        // 可以设置样式表使按钮更美观
-        btn->setStyleSheet("QPushButton {"
-            "background-color: rgba(125, 255, 255, 180);"
-            "border: 2px solid #8f8f91;"
-            "border-radius: 6px;"
-            "font-size: 16px;"
-            "padding: 6px;"
-            "}"
-            "QPushButton:hover {"
-            "background-color: rgba(255, 255, 255, 220);"
-            "border: 2px solid #3daee9;"
-            "}");
-    }
+            // 使用QVBoxLayout填充整个主页面
+    QVBoxLayout* centralLayout = new QVBoxLayout(m_centralWidget);
+    centralLayout->setContentsMargins(0, 0, 0, 0);
+    centralLayout->addWidget(m_backgroundWidget);
 
-            // 创建按钮布局
-    QVBoxLayout* buttonLayout = new QVBoxLayout(container);
-    buttonLayout->addStretch(2); // 顶部弹性空间（更多）
-    buttonLayout->addWidget(storyModeButton);
-    buttonLayout->addWidget(challengeModeButton);
-    buttonLayout->addWidget(customModeButton);
-    buttonLayout->addWidget(settingsButton);
-    buttonLayout->addWidget(exitButton);
-    buttonLayout->addStretch(2); // 底部弹性空间（更多）
-    buttonLayout->setSpacing(20);
-    buttonLayout->setAlignment(Qt::AlignCenter);
+            // 创建一个容器用于放置按钮
+    QWidget* buttonContainer = new QWidget(m_backgroundWidget);
+    m_mainLayout = new QVBoxLayout(buttonContainer);
+    m_mainLayout->setAlignment(Qt::AlignCenter);
+    m_mainLayout->setSpacing(20);
 
-            // 设置按钮在布局中的对齐方式
-    for (QPushButton* btn : buttons) {
-        buttonLayout->setAlignment(btn, Qt::AlignHCenter);
-    }
+            // 创建按钮
+    m_storyModeBtn = createMenuButton("剧情模式");
+    m_challengeModeBtn = createMenuButton("挑战模式");
+    m_customModeBtn = createMenuButton("自定义模式");
+    m_settingsBtn = createMenuButton("设置");
+    m_exitBtn = createMenuButton("退出");
 
-            // 创建主布局并将容器放在中央
-    QVBoxLayout* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(0, 0, 0, 0); // 移除边距
-    mainLayout->addWidget(container);
+            // 添加按钮到布局
+    m_mainLayout->addWidget(m_storyModeBtn);
+    m_mainLayout->addWidget(m_challengeModeBtn);
+    m_mainLayout->addWidget(m_customModeBtn);
+    m_mainLayout->addWidget(m_settingsBtn);
+    m_mainLayout->addWidget(m_exitBtn);
 
-            // 连接按钮信号
-    connect(storyModeButton, &QPushButton::clicked, this, &MainWindow::onStoryModeClicked);
-    connect(challengeModeButton, &QPushButton::clicked, this, &MainWindow::onChallengeModeClicked);
-    connect(customModeButton, &QPushButton::clicked, this, &MainWindow::onCustomModeClicked);
-    connect(settingsButton, &QPushButton::clicked, this, &MainWindow::onSettingsClicked);
-    connect(exitButton, &QPushButton::clicked, this, &MainWindow::onExitClicked);
+            // 创建一个布局让按钮容器居中
+    QVBoxLayout* bgLayout = new QVBoxLayout(m_backgroundWidget);
+    bgLayout->addWidget(buttonContainer, 0, Qt::AlignCenter);
+
+            // 创建挑战模式页面
+    m_challengeMode = new ChallengeMode();
+
+            // 将页面添加到QStackedWidget
+    m_stackedWidget->addWidget(m_centralWidget);    // 主页面
+    m_stackedWidget->addWidget(m_challengeMode);    // 挑战模式页面
+
+            // 连接信号和槽
+    connect(m_storyModeBtn, &QPushButton::clicked, this, &MainWindow::onStoryModeClicked);
+    connect(m_challengeModeBtn, &QPushButton::clicked, this, &MainWindow::onChallengeModeClicked);
+    connect(m_customModeBtn, &QPushButton::clicked, this, &MainWindow::onCustomModeClicked);
+    connect(m_settingsBtn, &QPushButton::clicked, this, &MainWindow::onSettingsClicked);
+    connect(m_exitBtn, &QPushButton::clicked, this, &MainWindow::onExitClicked);
+    connect(m_challengeMode, &ChallengeMode::returnToMainMenuRequested,
+            this, &MainWindow::switchToMainPage);
+
 }
 
-void MainWindow::resizeEvent(QResizeEvent *event)
+QPushButton* MainWindow::createMenuButton(const QString& text)
 {
-    // 当窗口大小变化时，更新背景控件的大小
-    backgroundWidget->setGeometry(0, 0, width(), height());
-    QWidget::resizeEvent(event);
+    QPushButton* button = new QPushButton(text, this);
+    button->setMinimumSize(200, 60);
+    button->setFont(QFont("Microsoft YaHei", 12, QFont::Bold));
+
+            // 设置按钮样式
+    button->setStyleSheet(
+        "QPushButton {"
+        "    background-color: rgba(255, 255, 255, 200);"
+        "    border: 2px solid #8B4513;"
+        "    border-radius: 10px;"
+        "    color: #8B4513;"
+        "    padding: 5px;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: rgba(139, 69, 19, 200);"
+        "    color: white;"
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #654321;"
+        "    border: 2px solid #654321;"
+        "}"
+        );
+
+    return button;
 }
 
-// 以下是按钮点击事件处理函数
 void MainWindow::onStoryModeClicked()
 {
-   // 剧情模式处理代码
+    QMessageBox::information(this, "提示", "剧情模式正在开发中...");
 }
 
 void MainWindow::onChallengeModeClicked()
 {
-    GameManager* manager = GameManager::instance();
-    manager->setGameUI(m_gameUI);
-    // 初始化游戏(行数, 列数, 药材数量, 初始打开抽屉数, 随机操作步数)
-    manager->initializeGame(5, 8, 10, 5, 10);
+    QMessageBox::information(this, "提示", "挑战模式正在开发中...");
+    m_stackedWidget->setCurrentWidget(m_challengeMode);
 
 }
 
 void MainWindow::onCustomModeClicked()
 {
-   // 自定义模式处理代码
+    QMessageBox::information(this, "提示", "自定义模式正在开发中...");
 }
 
 void MainWindow::onSettingsClicked()
 {
-    Setting::instance()->exec();
+    Setting::instance()->show();
 }
 
 void MainWindow::onExitClicked()
 {
     QApplication::quit();
-}
-
-
-//存档模块
-void MainWindow::showSaveSelectionDialog()
-{
-    SaveSelectDialog dialog(this);
-    int result = dialog.exec();
-
-    if (result != QDialog::Accepted) {
-        qDebug() << "用户取消了存档选择，正在退出应用程序...";
-        exit(0);
-        return;
-    }
-
-            // 获取选中的SaveManager
-    m_saveManager = dialog.getSaveManager();
-
-            // 根据加载的存档更新游戏状态
-    updateGameState();
-}
-
-
-// 更新游戏状态的简单实现
-void MainWindow::updateGameState()
-{
-    if (!m_saveManager) {
-        return;
-    }
-
-    // 更新窗口标题显示玩家名称
-    setWindowTitle(tr("我的游戏 - %1").arg(m_saveManager->getPlayerName()));
-
-    // 这里可以添加更多的游戏状态更新逻辑
 }

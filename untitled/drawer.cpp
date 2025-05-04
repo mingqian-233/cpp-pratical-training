@@ -16,7 +16,7 @@ const Medicine& Drawer::getSecondMedicine() const {
 }
 
 // 检查抽屉是否包含指定药材
-bool Drawer::containsMedicine(const std::string& medicineName) const {
+bool Drawer::containsMedicine(const QString& medicineName) const {
     return (firstMedicine.getName() == medicineName ||
             secondMedicine.getName() == medicineName);
 }

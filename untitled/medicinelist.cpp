@@ -1,3 +1,4 @@
+// MedicineList.cpp
 #include "MedicineList.h"
 #include <algorithm>
 #include <random>
@@ -10,59 +11,53 @@ MedicineList::MedicineList() {
 void MedicineList::generateFromCabinetState(const Cabinet& cabinet) {
     // 清空当前药材清单
     medicineList.clear();
-
-    // 获取当前打开抽屉中的所有药材
-    medicineList = cabinet.getCurrentMedicines();
+            // 获取当前打开抽屉中的所有药材
+    medicineList = cabinet.getMedicineList();
 }
 
-// 获取药材清单
-const std::map<std::string, int>& MedicineList::getMedicineList() const {
+std::map<QString, std::pair<int, int>> MedicineList::getMedicines() const {
+    // Simply return the entire medicine list, which holds <current, target> pairs
     return medicineList;
 }
 
-// 计算当前药柜状态与目标药材清单的差异
-std::map<std::string, std::pair<int, int>> MedicineList::calculateDifference(const Cabinet& cabinet) const {
-    std::map<std::string, std::pair<int, int>> difference;
-
-    // 获取当前打开抽屉中的所有药材及其数量
-    std::map<std::string, int> currentMedicines = cabinet.getCurrentMedicines();
-
-    // 首先将所有目标药材添加到差异表中
-    for (const auto& [name, targetCount] : medicineList) {
-        int currentCount = currentMedicines.count(name) ? currentMedicines[name] : 0;
-        difference[name] = std::make_pair(currentCount, targetCount);
+std::pair<int, int> MedicineList::getMedicineCount(const QString& name) const {
+    // Search for the medicine by its name
+    auto it = medicineList.find(name);
+    if (it != medicineList.end()) {
+        // If found, return the current and target quantities
+        return it->second;
+    } else {
+        // If not found, return a default pair (0, 0)
+        return {0, 0};
     }
+}
+void MedicineList::updateCurrentCount(const Cabinet& cabinet) {
+    // 获取当前药柜中的药材及其数量
+    std::map<QString, int> currentMedicines = cabinet.getCurrentMedicines();
 
-    // 添加当前有但目标中没有的药材
-    for (const auto& [name, currentCount] : currentMedicines) {
-        if (medicineList.count(name) == 0) {
-            difference[name] = std::make_pair(currentCount, 0);
+    // 遍历medicineList中的所有药材，更新其当前数量
+    for (auto& [name, countPair] : medicineList) {
+        // 检查药柜中是否有该药材
+        if (currentMedicines.count(name) > 0) {
+            // 更新当前数量，保持目标数量不变
+            countPair.first = currentMedicines[name];
+        } else {
+            // 如果药柜中没有该药材，将当前数量设为0
+            countPair.first = 0;
         }
     }
-
-    return difference;
 }
+
 
 // 检查当前药柜状态是否满足药材清单要求
 bool MedicineList::isSatisfied(const Cabinet& cabinet) const {
-    // 获取当前打开抽屉中的所有药材及其数量
-    std::map<std::string, int> currentMedicines = cabinet.getCurrentMedicines();
-
-    // 检查每种目标药材的数量是否匹配
-    for (const auto& [name, targetCount] : medicineList) {
+    for (const auto& [name, cnt] : medicineList) {
         // 如果当前没有这种药材，或者数量不匹配
-        if (currentMedicines.count(name) == 0 || currentMedicines[name] != targetCount) {
+        const auto [currentCount,targetCount]=cnt;
+        if ( currentCount != targetCount) {
             return false;
         }
     }
-
-    // 检查是否有多余的药材（当前有但目标中没有）
-    for (const auto& [name, currentCount] : currentMedicines) {
-        if (medicineList.count(name) == 0) {
-            return false;
-        }
-    }
-
     return true;
 }
 
@@ -70,27 +65,3 @@ bool MedicineList::isSatisfied(const Cabinet& cabinet) const {
 void MedicineList::clear() {
     medicineList.clear();
 }
-
-std::map<QString, std::pair<int, int>> MedicineList::getMedicines(const Cabinet& cabinet) const {
-    std::map<QString, std::pair<int, int>> result;
-
-    // Get current medicines from cabinet
-    std::map<std::string, int> currentMedicines = cabinet.getCurrentMedicines();
-
-    // Process all medicines in the target list
-    for (const auto& [name, targetCount] : medicineList) {
-        QString medicineName = QString::fromStdString(name);
-        int currentCount = 0;
-
-        // If this medicine exists in current medicines, get its count
-        if (currentMedicines.count(name) > 0) {
-            currentCount = currentMedicines[name];
-        }
-
-        result[medicineName] = std::make_pair(currentCount, targetCount);
-    }
-
-    return result;
-}
-
-
