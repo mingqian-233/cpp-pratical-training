@@ -1,14 +1,31 @@
 <RCC>
     <qresource prefix="/">
         <file>images/bg_main.png</file>
-        <file>music/bgm/taqing.wav</file>
         <file>images/i_happy.png</file>
         <file>images/i_nervous.png</file>
         <file>images/i_sad.png</file>
         <file>images/i_smile.png</file>
         <file>images/i_surprise.png</file>
         <file>data/medicine_name.txt</file>
-        <file>images/drawer.png</file>
         <file>images/bg_challenge.png</file>
+        <file>music/bgm/challenge.mp3</file>
+        <file>images/drawer.png</file>
+        <file>images/all-powerful.png</file>
+        <file>music/se/win.wav</file>
+        <file>music/se/click.mp3</file>
+        <file>images/bg_custom.png</file>
+        <file>images/aethergazer.png</file>
+        <file>images/artifacts.png</file>
+        <file>music/bgm/ch01.mp3</file>
+        <file>storymode/chapter_1.json</file>
+        <file>music/bgm/custom.mp3</file>
+        <file>music/bgm/taqing.mp3</file>
+        <file>images/setting.png</file>
+        <file>storymode/chapter_2.json</file>
+        <file>images/next_chapter.png</file>
+        <file>storymode/chapter_3.json</file>
+        <file>storymode/chapter_4.json</file>
+        <file>storymode/chapter_5.json</file>
+        <file>storymode/chapter_6.json</file>
     </qresource>
 </RCC>

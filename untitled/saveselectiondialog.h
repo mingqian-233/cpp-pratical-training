@@ -51,6 +51,7 @@ private:
     void connectSignals();
     void scanSaveFiles();
     QString getSaveInfo(const QString &saveFilePath);
+
 };
 
 #endif // SAVESELECTDIALOG_H

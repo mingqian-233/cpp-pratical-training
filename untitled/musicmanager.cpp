@@ -15,13 +15,20 @@ MusicManager::MusicManager(QObject *parent)
     //无限循环
     musicPlayer->setLoops(QMediaPlayer::Infinite);
 }
-
 void MusicManager::playEffect(const QString &se)
 {
-    // 构建音效文件的路径
-    QString effectPath = QString(":/music/se/%1").arg(se);
+    // Check if the path already starts with ":", if so, use it directly
+    QString effectPath;
+    if (se.startsWith(":") || se.startsWith("qrc:")) {
+        effectPath = se;
+    } else {
+        // 使用与音乐相同的前缀格式
+        effectPath = QString("qrc:/music/se/%1").arg(se);
+    }
+    qDebug() << "路径：" << effectPath;
+    qDebug() << "方法：playEffect";
 
-            // 创建一个新的播放器和输出，用于短暂音效播放
+            // Create a new player and output for the effect
     QMediaPlayer* effectPlayer = new QMediaPlayer(this);
     QAudioOutput* effectOutput = new QAudioOutput(this);
 
@@ -31,10 +38,10 @@ void MusicManager::playEffect(const QString &se)
     effectPlayer->setAudioOutput(effectOutput);
     effectOutput->setVolume(masterVolume * effectVolume);
 
-    effectPlayer->setSource(QUrl::fromLocalFile(effectPath));
+    effectPlayer->setSource(QUrl(effectPath));
     effectPlayer->play();
 
-            // 当播放完成后自动清理
+            // Cleanup when playback finishes
     connect(effectPlayer, &QMediaPlayer::mediaStatusChanged, this, [=](QMediaPlayer::MediaStatus status) {
         if (status == QMediaPlayer::EndOfMedia || status == QMediaPlayer::InvalidMedia) {
             effectPlayers.removeOne(effectPlayer);
@@ -44,6 +51,7 @@ void MusicManager::playEffect(const QString &se)
         }
     });
 }
+
 
 void MusicManager::cleanupEffects()
 {

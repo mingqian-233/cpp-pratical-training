@@ -1,0 +1,28 @@
+{
+  "title": "第一章：药童初试",
+  "background": "bg_story1",
+  "dialogues": [
+    {
+      "character": "李师傅",
+      "avatar": "i_nervous.png",
+      "text": "孩子，你已经跟着我学了三个月了，今天我要考考你对药材的认识。"
+    },
+    {
+      "character": "主角",
+      "avatar": "i_smile.png",
+      "text": "师傅，我一定不会让您失望的！"
+    },
+    {
+      "character": "李师傅",
+      "avatar": "i_surprise.png",
+      "text": "接下来要认真了！",
+      "music": "challenge.mp3"
+    }
+  ],
+  "game": {
+    "medicineTypes": 2,
+    "rows": 2,
+    "cols": 2,
+    "operationCount": 1
+  }
+}

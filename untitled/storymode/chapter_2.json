@@ -1,0 +1,28 @@
+{
+  "title": "第二章：药童初试",
+  "background": "bg_story1",
+  "dialogues": [
+    {
+      "character": "发撒单位",
+      "avatar": "i_nervous.png",
+      "text": "顺丰翡翠城"
+    },
+    {
+      "character": "主角",
+      "avatar": "i_smile.png",
+      "text": "师傅，我一定不会让您失望的！"
+    },
+    {
+      "character": "李师傅",
+      "avatar": "i_surprise.png",
+      "text": "245624投入软饭",
+      "music": "ch01.mp3"
+    }
+  ],
+  "game": {
+    "medicineTypes": 2,
+    "rows": 3,
+    "cols": 3,
+    "operationCount": 1
+  }
+}

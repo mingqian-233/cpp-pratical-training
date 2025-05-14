@@ -7,7 +7,32 @@
 #include "backgroundwidget.h"
 #include "savemanager.h"
 #include <QStackedWidget>
-#include "challengemode.h"
+#include "medicinegame.h"
+#include "medicinedrawer.h"
+#include <QListWidget>
+#include <QGroupBox>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <QMessageBox>
+#include <QApplication>
+#include "qtimer.h"
+#include "setting.h"
+#include "saveselectiondialog.h"
+#include "storymode.h"
+#include "savemanager.h"
+#include <qspinbox.h>
+#include <QScrollArea>
+#include <QSpinBox>
+#include <QComboBox>
+#include <QListWidget>
+#include <QMap>
+#include <QVector>
+#include <QGridLayout>
+#include <QDebug>
+#include <QFile>
+#include <QTextStream>
+#include <QtMath>
+#include <QFileDialog>
 
 class MainWindow : public QMainWindow
 {
@@ -21,18 +46,13 @@ public:
 public:
     void switchToMainPage();
 
-    // 在private slots部分添加：
 private slots:
-    // ... 现有的slots ...
     void showSaveSelectDialog();
 
-    // 在private部分添加：
 private:
-    // ... 现有的成员 ...
     SaveManager* m_saveManager;
 
 private slots:
-    // 各个模式的点击响应函数
     void onStoryModeClicked();
     void onChallengeModeClicked();
     void onCustomModeClicked();
@@ -67,8 +87,19 @@ private:
 private:
     // 添加QStackedWidget和ChallengeMode
     QStackedWidget* m_stackedWidget;
-    ChallengeMode* m_challengeMode;
     QWidget* m_mainPage;  // 用于存放原有的主界面内容
+signals:
+    void gameCompleted();  // 游戏完成信号
+
+private:
+    void startChallengeLevel(int level);  // 启动挑战关卡
+
+    void createCustomLevel();
+    void setupCustomDrawers(int rows, int cols, const QStringList& medicines);
+    void loadCustomLevel();
+    void startCustomGame(const QString& filePath);
+    void designCustomGame(const QString& filePath);
+    void loadChapter(int chapterNumber);
 
 };
 

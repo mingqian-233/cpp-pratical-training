@@ -11,33 +11,29 @@ QT += core gui widgets multimedia
 # 源文件列表（所有 .cpp 文件）
 SOURCES += main.cpp \
            backgroundwidget.cpp \
-           cabinet.cpp \
-           challengemode.cpp \
-           drawer.cpp \
-           gamemanager.cpp \
-           gameui.cpp \
+           chaptertransition.cpp \
            mainwindow.cpp \
-           medicine.cpp \
+           medicinedrawer.cpp \
+           medicinegame.cpp \
            medicinelist.cpp \
            musicmanager.cpp \
            savemanager.cpp \
            saveselectiondialog.cpp \
-           setting.cpp
+           setting.cpp \
+           storymode.cpp
 
 # 头文件列表（所有 .h 文件）
 HEADERS += backgroundwidget.h \
-           cabinet.h \
-           challengemode.h \
-           drawer.h \
-           gamemanager.h \
-           gameui.h \
+           chaptertransition.h \
            mainwindow.h \
-           medicine.h \
+           medicinedrawer.h \
+           medicinegame.h \
            medicinelist.h \
            musicmanager.h \
            savemanager.h \
            saveselectiondialog.h \
-           setting.h
+           setting.h \
+           storymode.h
 
 # 资源文件列表（.qrc 文件）
 RESOURCES += resources.qrc
@@ -95,7 +91,6 @@ CONFIG(release, debug|release) {
 # 其他自定义配置
 # 例如，如果需要设置图标或者其它资源
 
-DISTFILES += \
-    C:/Users/tomfa/Desktop/·踏情 (已合并).wav
-
 FORMS +=
+
+DISTFILES +=

@@ -2,15 +2,18 @@
 #include "saveselectiondialog.h"
 #include <QInputDialog>
 #include <QStandardPaths>
+#include "qcoreapplication.h"
 
 SaveSelectDialog::SaveSelectDialog(QWidget *parent)
-    : QDialog(parent), m_saveManager(new SaveManager(this))
+    : QDialog(parent)
 {
     setWindowTitle(tr("选择存档"));
     setMinimumSize(400, 300);
 
+    m_saveManager = SaveManager::instance();
     // 设置存档目录
-    m_saveDirPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/saves";
+    m_saveDirPath = QCoreApplication::applicationDirPath() + "/saves";
+
     QDir saveDir(m_saveDirPath);
     if (!saveDir.exists()) {
         saveDir.mkpath(".");
@@ -113,31 +116,11 @@ void SaveSelectDialog::scanSaveFiles()
 
 QString SaveSelectDialog::getSaveInfo(const QString &saveFilePath)
 {
-    SaveManager tempManager;
-    if (tempManager.loadSaveFile(saveFilePath)) {
-        QFileInfo fileInfo(saveFilePath);
-        QString lastModified = fileInfo.lastModified().toString("yyyy-MM-dd hh:mm:ss");
-
-        // 获取已解锁的最高关卡
-        int unlockedLevel = tempManager.getFreeUnlockedLevel();
-
-        // 获取各关卡的最高分
-        QString highScores;
-        for (int i = 1; i <= unlockedLevel; i++) {
-            if (i > 1) highScores += " | ";
-            highScores += QString("关卡%1: %2分").arg(i).arg(tempManager.getFreeHighScore(i));
-        }
-
-        return QString("%1 - %2\n故事进度: %3 | 已解锁关卡: %4\n最高分: %5\n最后修改: %6")
-            .arg(fileInfo.baseName())
-            .arg(tempManager.getPlayerName())
-            .arg(tempManager.getStoryProgress())
-            .arg(unlockedLevel)
-            .arg(highScores)
-            .arg(lastModified);
+    QString info = SaveManager::readSaveFileInfo(saveFilePath);
+    if (info.isEmpty()) {
+        return QFileInfo(saveFilePath).baseName() + tr(" (无法读取)");
     }
-
-    return QFileInfo(saveFilePath).baseName() + tr(" (无法读取)");
+    return info;
 }
 
 
@@ -168,14 +151,51 @@ void SaveSelectDialog::onLoadSaveClicked()
     QList<QListWidgetItem*> selectedItems = m_saveListWidget->selectedItems();
     if (!selectedItems.isEmpty()) {
         QString saveFilePath = selectedItems.first()->data(Qt::UserRole).toString();
-        if (m_saveManager->loadSaveFile(saveFilePath)) {
+
+        // 添加调试信息
+        qDebug() << "尝试加载存档文件:" << saveFilePath;
+        qDebug() << "m_saveManager指针:" << m_saveManager;
+
+        // 在加载之前检查m_saveData
+        qDebug() << "加载前的m_saveManager数据状态:";
+        if (m_saveManager) {
+            qDebug() << "m_saveData是否为空:" << (m_saveManager->getSaveData().isEmpty() ? "是" : "否");
+        } else {
+            qDebug() << "m_saveManager为空!";
+        }
+
+        bool loadResult = false;
+        try {
+            loadResult = m_saveManager->loadSaveFile(saveFilePath);
+            qDebug() << "加载结果:" << (loadResult ? "成功" : "失败");
+        } catch (const std::exception& e) {
+            qDebug() << "加载存档时捕获到标准异常:" << e.what();
+            loadResult = false;
+        } catch (...) {
+            qDebug() << "加载存档时捕获到未知异常!";
+            loadResult = false;
+        }
+
+        if (loadResult) {
             m_selectedSaveFile = saveFilePath;
+
+            // 在成功加载后检查数据
+            qDebug() << "加载后的存档数据:";
+            qDebug() << "玩家名称:" << m_saveManager->getPlayerName();
+
+            try {
+                qDebug() << "故事进度:" << m_saveManager->getStoryProgress();
+            } catch (...) {
+                qDebug() << "获取故事进度时出错";
+            }
+
             accept();
         } else {
             QMessageBox::critical(this, tr("错误"), tr("无法加载所选存档!"));
         }
     }
 }
+
 
 void SaveSelectDialog::onDeleteSaveClicked()
 {
@@ -201,13 +221,41 @@ void SaveSelectDialog::onDeleteSaveClicked()
 void SaveSelectDialog::onSaveItemDoubleClicked(QListWidgetItem *item)
 {
     QString saveFilePath = item->data(Qt::UserRole).toString();
-    if (m_saveManager->loadSaveFile(saveFilePath)) {
-        m_selectedSaveFile = saveFilePath;
-        accept();
-    } else {
-        QMessageBox::critical(this, tr("错误"), tr("无法加载所选存档!"));
+
+    // 添加调试信息
+    qDebug() << "双击 - 尝试加载存档:" << saveFilePath;
+
+    try {
+        if (m_saveManager->loadSaveFile(saveFilePath)) {
+            m_selectedSaveFile = saveFilePath;
+
+            // 调试 - 输出加载的数据
+            qDebug() << "双击 - 加载成功，玩家名称:" << m_saveManager->getPlayerName();
+            qDebug() << "双击 - 尝试获取故事进度...";
+
+            try {
+                int progress = m_saveManager->getStoryProgress();
+                qDebug() << "双击 - 故事进度:" << progress;
+            }
+            catch (...) {
+                qDebug() << "双击 - 获取故事进度时发生异常!";
+            }
+
+            accept();
+        } else {
+            QMessageBox::critical(this, tr("错误"), tr("无法加载所选存档!"));
+        }
+    }
+    catch (const std::exception& e) {
+        qDebug() << "双击 - 加载存档时异常:" << e.what();
+        QMessageBox::critical(this, tr("错误"), tr("加载存档时出现异常!"));
+    }
+    catch (...) {
+        qDebug() << "双击 - 加载存档时出现未知异常!";
+        QMessageBox::critical(this, tr("错误"), tr("加载存档时出现未知异常!"));
     }
 }
+
 
 void SaveSelectDialog::refreshSaveList()
 {

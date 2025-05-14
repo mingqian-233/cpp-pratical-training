@@ -1,67 +1,108 @@
-// MedicineList.cpp
-#include "MedicineList.h"
-#include <algorithm>
-#include <random>
+// medicinelist.cpp
+#include "medicinelist.h"
 
-// 构造函数
-MedicineList::MedicineList() {
+MedicineList::MedicineList(QWidget *parent)
+    : QWidget(parent)
+{
+    // Create the main layout
+    m_layout = new QVBoxLayout(this);
+
+    // Create the title label
+    m_titleLabel = new QLabel("药材清单", this);
+    m_titleLabel->setAlignment(Qt::AlignCenter);
+    m_titleLabel->setStyleSheet("font-size: 18px; font-weight: bold; color: #805030;");
+
+    // Add title to layout
+    m_layout->addWidget(m_titleLabel);
+    m_layout->addSpacing(10);
+
+    setLayout(m_layout);
+    setMinimumWidth(200);
+
+    // Set style
+    setStyleSheet("background-color: rgba(240, 230, 220, 180); border-radius: 10px;");
 }
 
-// 根据当前药柜状态生成药材清单
-void MedicineList::generateFromCabinetState(const Cabinet& cabinet) {
-    // 清空当前药材清单
-    medicineList.clear();
-            // 获取当前打开抽屉中的所有药材
-    medicineList = cabinet.getMedicineList();
+MedicineList::~MedicineList()
+{
 }
 
-std::map<QString, std::pair<int, int>> MedicineList::getMedicines() const {
-    // Simply return the entire medicine list, which holds <current, target> pairs
-    return medicineList;
+void MedicineList::setTargetList(const QMap<QString, int> &targetList)
+{
+    m_targetList = targetList;
+    updateDisplay();
 }
 
-std::pair<int, int> MedicineList::getMedicineCount(const QString& name) const {
-    // Search for the medicine by its name
-    auto it = medicineList.find(name);
-    if (it != medicineList.end()) {
-        // If found, return the current and target quantities
-        return it->second;
-    } else {
-        // If not found, return a default pair (0, 0)
-        return {0, 0};
+void MedicineList::setCurrentList(const QMap<QString, int> &currentList)
+{
+    m_currentList = currentList;
+    updateDisplay();
+}
+
+QMap<QString, int> MedicineList::targetList() const
+{
+    return m_targetList;
+}
+
+QMap<QString, int> MedicineList::currentList() const
+{
+    return m_currentList;
+}
+void MedicineList::addExcluded(QString medicine){
+    m_excludedMedicines.insert(medicine);
+}
+bool MedicineList::isCompleted() const
+{
+    // Check if current list matches target list
+    if (m_currentList.size() != m_targetList.size()) {
+        return false;
     }
-}
-void MedicineList::updateCurrentCount(const Cabinet& cabinet) {
-    // 获取当前药柜中的药材及其数量
-    std::map<QString, int> currentMedicines = cabinet.getCurrentMedicines();
 
-    // 遍历medicineList中的所有药材，更新其当前数量
-    for (auto& [name, countPair] : medicineList) {
-        // 检查药柜中是否有该药材
-        if (currentMedicines.count(name) > 0) {
-            // 更新当前数量，保持目标数量不变
-            countPair.first = currentMedicines[name];
-        } else {
-            // 如果药柜中没有该药材，将当前数量设为0
-            countPair.first = 0;
-        }
-    }
-}
-
-
-// 检查当前药柜状态是否满足药材清单要求
-bool MedicineList::isSatisfied(const Cabinet& cabinet) const {
-    for (const auto& [name, cnt] : medicineList) {
-        // 如果当前没有这种药材，或者数量不匹配
-        const auto [currentCount,targetCount]=cnt;
-        if ( currentCount != targetCount) {
+    for (auto it = m_targetList.begin(); it != m_targetList.end(); ++it) {
+        if (!m_currentList.contains(it.key()) || m_currentList[it.key()] != it.value()) {
             return false;
         }
     }
+
     return true;
 }
 
-// 清空药材清单
-void MedicineList::clear() {
-    medicineList.clear();
+
+
+void MedicineList::updateDisplay()
+{
+    // Clear old medicine labels
+    for (QLabel *label : m_medicineLabels) {
+        m_layout->removeWidget(label);
+        delete label;
+    }
+    m_medicineLabels.clear();
+
+            // Create new medicine labels
+    QStringList medicineNames = m_targetList.keys();
+    for (const QString &name : medicineNames) {
+        QString text = QString("%1: %2/%3").arg(name)
+        .arg(m_currentList.value(name, 0))
+            .arg(m_targetList.value(name, 0));
+
+        QLabel *label = new QLabel(text, this);
+
+                // Set label style
+        if (m_currentList.value(name, 0) == m_targetList.value(name, 0)) {
+            label->setStyleSheet("color: #008000; font-weight: bold;"); // Green for match
+        } else if (m_currentList.value(name, 0) > m_targetList.value(name, 0)) {
+            label->setStyleSheet("color: #800000; font-weight: bold;"); // Red for excess
+        } else {
+            label->setStyleSheet("color: #000080; font-weight: bold;"); // Blue for insufficient
+        }
+        // 如果药材被排除，则为其添加划掉效果
+        if (m_excludedMedicines.contains(name)) {
+            label->setStyleSheet("color: #ff0000; text-decoration: line-through; font-weight: bold;");
+        }
+        m_layout->addWidget(label);
+        m_medicineLabels.append(label);
+    }
+
+            // Add bottom stretch space
+    m_layout->addStretch();
 }

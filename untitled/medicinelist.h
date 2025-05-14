@@ -1,37 +1,48 @@
+// medicinelist.h
 #ifndef MEDICINELIST_H
 #define MEDICINELIST_H
 
-#include <map>
-#include <utility>
-#include <QString>
-#include "Cabinet.h"
+#include <QWidget>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QMap>
+#include <QStringList>
+#include <QObject>
+class MedicineList : public QWidget
+{
+    Q_OBJECT
 
-class MedicineList {
 public:
-    // 构造函数
-    MedicineList();
+    explicit MedicineList(QWidget *parent = nullptr);
+    ~MedicineList();
 
-            // 根据当前药柜状态生成药材清单
-    void generateFromCabinetState(const Cabinet& cabinet);
+    // 设置目标药材清单
+    void setTargetList(const QMap<QString, int> &targetList);
 
-            // 更新现有数量
-    void updateCurrentCount(const Cabinet& cabinet);
+    // 设置当前药材清单
+    void setCurrentList(const QMap<QString, int> &currentList);
 
-            // 获取所有药材信息 (返回药材名, <现有数量, 目标数量>)
-    std::map<QString, std::pair<int, int>> getMedicines() const;
+    // 获取目标药材清单
+    QMap<QString, int> targetList() const;
 
-            // 获取指定药材的现有数量和目标数量
-    std::pair<int, int> getMedicineCount(const QString& name) const;
+    // 获取当前药材清单
+    QMap<QString, int> currentList() const;
 
-            // 检查当前药柜状态是否满足药材清单要求
-    bool isSatisfied(const Cabinet& cabinet) const;
+    // 检查当前清单是否符合目标清单
+    bool isCompleted() const;
 
-            // 清空药材清单
-    void clear();
+    void addExcluded(QString medicine);
 
+    void updateDisplay();
 private:
-    // 药材目标清单: <药材名, <现有数量, 目标数量>>
-    std::map<QString, std::pair<int, int>> medicineList;
+    QVBoxLayout *m_layout;                // 主布局
+    QLabel *m_titleLabel;                 // 标题标签
+    QMap<QString, int> m_targetList;      // 目标药材清单
+    QMap<QString, int> m_currentList;     // 当前药材清单
+    QList<QLabel*> m_medicineLabels;      // 药材标签列表
+    QSet<QString> m_excludedMedicines;
+
+    // 更新药材清单显示
 };
 
 #endif // MEDICINELIST_H

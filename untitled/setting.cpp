@@ -64,6 +64,11 @@ void Setting::setupUI()
     musicSlider->setValue(100);
     effectSlider->setValue(100);
 
+    // 创建返回主菜单按钮
+    QPushButton *returnToMainButton = new QPushButton("返回主菜单");
+    returnToMainButton->setMinimumSize(120, 30);
+    connect(returnToMainButton, &QPushButton::clicked, this, &Setting::onReturnToMainClicked);
+
     QVBoxLayout *layout = new QVBoxLayout;
     layout->addWidget(new QLabel("音乐"));
     layout->addWidget(muteCheckBox);
@@ -75,7 +80,23 @@ void Setting::setupUI()
     layout->addWidget(effectSlider);
     layout->addWidget(new QLabel("窗口"));
     layout->addWidget(fullscreenCheckBox);
+    layout->addSpacing(20);
+    layout->addWidget(returnToMainButton, 0, Qt::AlignCenter);
     setLayout(layout);
+}
+// ... existing code ...
+
+// 添加返回主菜单按钮处理函数
+void Setting::onReturnToMainClicked()
+{
+    // 应用当前设置
+    applySettings();
+
+    // 返回主菜单
+    MainWindow::instance()->switchToMainPage();
+
+    // 关闭设置对话框
+    close();
 }
 
 void Setting::setIsMute(bool mute)

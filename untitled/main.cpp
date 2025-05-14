@@ -2,17 +2,10 @@
 #include "mainwindow.h"
 #include "musicmanager.h"
 #include "setting.h"
-#include "Medicine.h"
-#include <iostream>
 #include <QString>
 #include <qmessagebox.h>
-#include <iostream>
 #include <QtCore/QDebug>
 #include <QtCore/QString>
-#include "Medicine.h"
-#include "Cabinet.h"
-#include "MedicineList.h"
-#include "Drawer.h"
 
 int main(int argc, char *argv[])
 {
@@ -24,28 +17,23 @@ int main(int argc, char *argv[])
 
     // 获取主窗口实例并显示
     MainWindow* mainWindow = MainWindow::instance();
-    mainWindow->show();
+    mainWindow->setFixedSize(mainWindow->size());
+    // 获取屏幕尺寸
+    QScreen *screen = QGuiApplication::primaryScreen();
+    if (screen) {
+        QRect screenGeometry = screen->availableGeometry();  // 获取屏幕可用区域
+        int x = (screenGeometry.width() - mainWindow->width()) / 2;
+        int y = (screenGeometry.height() - mainWindow->height()) / 2;
+        mainWindow->move(x, y);  // 将窗口移动到屏幕中央
+    }
 
+    mainWindow->show();
     // 初始化设置单例，使用主窗口作为父窗口
     Setting::initialize(mainWindow);
 
-
             // 初始化全局音乐
-    MusicManager::instance()->setMusic("taqing.wav");
+    MusicManager::instance()->setMusic("taqing.mp3");
     MusicManager::instance()->playMusic();
-
-            // 初始化药材
-    bool initSuccess = MedicineManager::getInstance().initialize();
-    if (!initSuccess) {
-        // 处理初始化失败的情况
-        std::cerr << "药材系统初始化失败!" << std::endl;
-        return -1; // 或其他错误处理
-    }
-    else std::cerr<<"medicine successfully initialized\n";
-
-
-    // qDebug() << "Starting game system test...";
-    // testGame();
 
     return a.exec();  // 启动Qt事件循环
 }
