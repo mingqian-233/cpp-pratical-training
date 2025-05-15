@@ -11,6 +11,10 @@
 #include <QDir>
 #include <QMessageBox>
 #include <QTimer>
+#include "ecganimation.h"
+#include "spacetimevortexanimation.h"
+
+
 StoryMode::StoryMode(QWidget *parent) : QWidget(parent), m_currentDialogue(0)
 {
     setupUI();
@@ -136,12 +140,16 @@ void StoryMode::setupUI()
 
 bool StoryMode::loadChapter(int chapter)
 {
+    m_currentChapterNumber = chapter;
+    qDebug()<<"m_currentChapterNumber："<<m_currentChapterNumber;
+
     // 重置状态
+
     m_currentDialogue = 0;
     m_dialogues.clear();
 
             // 加载章节文件
-    if (!loadChapterFile(chapter)) {
+    if (!loadChapterFile(chapter)) { // loadChapterFile 现在是通用加载
         return false;
     }
 
@@ -157,7 +165,7 @@ bool StoryMode::loadChapter(int chapter)
     return true;
 }
     // 添加章节过渡完成的槽函数
-    void StoryMode::onChapterTransitionFinished()
+void StoryMode::onChapterTransitionFinished()
     {
         // 章节过渡效果完成后，显示第一个对话
         showCurrentDialogue();
@@ -237,6 +245,7 @@ bool StoryMode::loadChapterFile(int chapter)
         dialogue.avatar = dialogueObj["avatar"].toString();
         dialogue.text = dialogueObj["text"].toString();
         dialogue.music = dialogueObj["music"].toString();  // 解析音乐字段
+        dialogue.background = dialogueObj["background"].toString(); // 解析背景字段
 
         m_dialogues.append(dialogue);
     }
@@ -249,10 +258,10 @@ bool StoryMode::loadChapterFile(int chapter)
 
 void StoryMode::showCurrentDialogue()
 {
+
     if (m_currentDialogue >= m_dialogues.size()) {
         // 所有对话已完成，准备开始游戏
         emit storyCompleted(m_gameParams);
-
         return;
     }
 
@@ -266,6 +275,10 @@ void StoryMode::showCurrentDialogue()
             // 如果有指定音乐且不为空，则切换音乐
     if (!dialogue.music.isEmpty()) {
         MusicManager::instance()->switchMusic(dialogue.music);
+    }
+    // 如果有指定背景且不为空，则切换背景
+    if (!dialogue.background.isEmpty()) {
+        m_backgroundWidget->setBackground(dialogue.background);
     }
 
             // 先显示对话框 - 这是关键修改，先显示对话框，让它正确定位
@@ -337,12 +350,9 @@ void StoryMode::showCurrentDialogue()
 // 在StoryMode类中覆盖鼠标点击事件
 void StoryMode::mousePressEvent(QMouseEvent *event)
 {
-    // 点击任意位置继续到下一个对话
-    m_currentDialogue++;
-    showCurrentDialogue();
-
-    // 事件已处理
+    nextDialogue();
     event->accept();
+    // 事件已处理
 }
 
 
@@ -355,20 +365,57 @@ void StoryMode::onSettingsClicked()
 {
     Setting::instance()->show();
 }
-// 修改 nextDialogue 方法，添加取消键支持
 void StoryMode::nextDialogue()
 {
     m_currentDialogue++;
-
+    qDebug()<<"当前对话"<<m_currentDialogue;
     if (m_currentDialogue >= m_dialogues.size()) {
-        // 对话结束，隐藏对话框
+        // 所有对话已完成，准备开始游戏
         m_dialogueBox->hide();
+        m_avatarLabel->hide();
 
-        // 发送完成信号
-        emit storyCompleted(m_gameParams);
-    } else {
+        if (m_currentChapterNumber == 1) {
+            qDebug() << "处理第一章";
+            // 第一章结束时的特殊处理：显示ECG动画
+            m_backgroundWidget->setBackground("hospital"); // 为ECG动画设置背景
+
+            ECGAnimation *ecgAnimation = new ECGAnimation(this);
+            ecgAnimation->resize(this->size());
+            ecgAnimation->show();
+            ecgAnimation->raise();
+
+                    // 开始动画
+            ecgAnimation->startAnimation();
+
+                    // 连接动画完成信号
+            connect(ecgAnimation, &ECGAnimation::animationFinished, this, [this, ecgAnimation]() {
+                // 动画完成后删除心电图控件
+                ecgAnimation->deleteLater();
+
+                // 创建并显示时空漩涡动画
+                SpaceTimeVortexAnimation *vortexAnimation = new SpaceTimeVortexAnimation(this);
+                vortexAnimation->resize(this->size());
+                vortexAnimation->show();
+                vortexAnimation->raise();
+
+                // 开始时空漩涡动画
+                vortexAnimation->startAnimation();
+
+                // 连接时空漩涡动画完成信号
+                connect(vortexAnimation, &SpaceTimeVortexAnimation::animationFinished, this, [this, vortexAnimation]() {
+                    // 动画完成后删除时空漩涡控件
+                    vortexAnimation->deleteLater();
+                    // 此时才发出storyCompleted信号
+                    emit storyCompleted(m_gameParams);
+                });
+            });
+        }else {
+            // 其他章节直接发出信号
+            emit storyCompleted(m_gameParams);
+        }
+        return;
+    }else {
         // 显示下一条对话
         showCurrentDialogue();
     }
 }
-

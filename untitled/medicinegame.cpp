@@ -87,10 +87,40 @@ MedicineGame::MedicineGame(QWidget *parent,bool design)
         // 最后再把整个横向布局添加到 rightLayout
         rightLayout->addLayout(toolButtonsLayout, Qt::AlignCenter);
 
+                // 创建设置按钮
+        m_settingsButton = new QPushButton(this);
+        m_settingsButton->setIcon(QIcon(":/images/setting.png"));
+        m_settingsButton->setIconSize(QSize(80, 80));
+        m_settingsButton->setFixedSize(100, 100);
+        m_settingsButton->setStyleSheet("QPushButton { background-color: transparent; border: none; }");
+        m_settingsButton->setCursor(Qt::PointingHandCursor);
+        m_settingsButton->move(width()-100-20, 20); // 初始位置设置在右上角
+        connect(m_settingsButton, &QPushButton::clicked, this, &MedicineGame::onSettingsClicked);
+        m_settingsButton->raise(); // 确保在最上层
+
     }
 
 }
+void MedicineGame::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event); // Call the base class implementation
 
+            // Update background size when the widget is resized
+    if (m_background) {
+        m_background->setGeometry(0, 0, width(), height());
+    }
+            //
+    // 重新定位设置按钮
+    if (m_settingsButton) {
+        m_settingsButton->move(width()-100-20, 20);
+    }
+}
+
+// 添加处理设置按钮点击的槽函数
+void MedicineGame::onSettingsClicked()
+{
+    Setting::instance()->show();
+}
 
 void MedicineGame::showMedicineSelector()
 {
@@ -145,17 +175,6 @@ void MedicineGame::showMedicineSelector()
     }
 }
 
-
-// Add this method to MedicineGame class
-void MedicineGame::resizeEvent(QResizeEvent *event)
-{
-    QWidget::resizeEvent(event); // Call the base class implementation
-
-    // Update background size when the widget is resized
-    if (m_background) {
-        m_background->setGeometry(0, 0, width(), height());
-    }
-}
 
 MedicineGame::~MedicineGame()
 {
@@ -442,7 +461,17 @@ void MedicineGame::generateMedicineList()
     // 计算当前药材清单
     QMap<QString, int> targetList = calculateCurrentList();
 
-    // 设置目标药材清单
+    // 获取所有柜子上的药材
+    QMap<QString, int> allMedicines = calculateAllMedicines();
+
+    // 合并两个列表，确保所有药材都包含在目标列表中
+    for (auto it = allMedicines.begin(); it != allMedicines.end(); ++it) {
+        if (!targetList.contains(it.key())) {
+            targetList[it.key()] = 0; // 设置为0表示需要的数量为0
+        }
+    }
+
+            // 设置目标药材清单
     m_medicineList->setTargetList(targetList);
     m_medicineList->setCurrentList(targetList);
 }
@@ -538,7 +567,7 @@ QMap<QString, int> MedicineGame::calculateCurrentList()
 {
     QMap<QString, int> list;
 
-    // 计算当前打开的抽屉中的药材
+            // 计算当前打开的抽屉中的药材
     for (MedicineDrawer *drawer : m_drawers) {
         if (drawer->isOpen()) {
             QString leftMedicine = drawer->leftMedicine();
@@ -552,6 +581,28 @@ QMap<QString, int> MedicineGame::calculateCurrentList()
     return list;
 }
 
+// 新方法：计算所有抽屉中存在的药材（不考虑抽屉状态）
+QMap<QString, int> MedicineGame::calculateAllMedicines()
+{
+    QMap<QString, int> list;
+
+    // 收集所有抽屉中的药材，不管抽屉是否打开
+    for (MedicineDrawer *drawer : m_drawers) {
+        QString leftMedicine = drawer->leftMedicine();
+        QString rightMedicine = drawer->rightMedicine();
+
+        // 只是将药材加入列表，初始数量为0
+        if (!list.contains(leftMedicine)) {
+            list[leftMedicine] = 0;
+        }
+
+        if (!list.contains(rightMedicine)) {
+            list[rightMedicine] = 0;
+        }
+    }
+
+    return list;
+}
 
 // 这个方法应该更简单，只关注游戏逻辑而不是UI
 void MedicineGame::designCustomGame(const QJsonObject& levelData)

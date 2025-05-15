@@ -1,6 +1,6 @@
 {
-  "title": "第一章：药童初试",
-  "background": "bg_story1",
+  "title": "6",
+  "background": "bg_bedroom",
   "dialogues": [
     {
       "character": "李师傅",
@@ -15,8 +15,9 @@
     {
       "character": "李师傅",
       "avatar": "i_surprise.png",
-      "text": "接下来要认真了！",
-      "music": "challenge.mp3"
+      "text": "啊，我死了",
+      "music": "hospital.mp3",
+      "background":"hospital"
     }
   ],
   "game": {

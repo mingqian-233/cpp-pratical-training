@@ -6,9 +6,10 @@
 #include <qmessagebox.h>
 #include <QtCore/QDebug>
 #include <QtCore/QString>
-
 int main(int argc, char *argv[])
 {
+
+
     QApplication a(argc, argv);
 
     // 设置应用程序名称和组织名称

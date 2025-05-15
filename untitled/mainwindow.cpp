@@ -78,6 +78,7 @@ void MainWindow::setupUI()
     m_storyModeBtn = createMenuButton("剧情模式");
     m_challengeModeBtn = createMenuButton("挑战模式");
     m_customModeBtn = createMenuButton("自定义模式");
+    m_gameRulesBtn = createMenuButton("游戏规则");
     m_settingsBtn = createMenuButton("设置");
     m_exitBtn = createMenuButton("退出");
 
@@ -85,6 +86,7 @@ void MainWindow::setupUI()
     m_mainLayout->addWidget(m_storyModeBtn);
     m_mainLayout->addWidget(m_challengeModeBtn);
     m_mainLayout->addWidget(m_customModeBtn);
+    m_mainLayout->addWidget(m_gameRulesBtn);
     m_mainLayout->addWidget(m_settingsBtn);
     m_mainLayout->addWidget(m_exitBtn);
 
@@ -98,11 +100,81 @@ void MainWindow::setupUI()
     connect(m_storyModeBtn, &QPushButton::clicked, this, &MainWindow::onStoryModeClicked);
     connect(m_challengeModeBtn, &QPushButton::clicked, this, &MainWindow::onChallengeModeClicked);
     connect(m_customModeBtn, &QPushButton::clicked, this, &MainWindow::onCustomModeClicked);
+    connect(m_gameRulesBtn, &QPushButton::clicked, this, &MainWindow::onGameRulesClicked);  // 连接游戏规则按钮
     connect(m_settingsBtn, &QPushButton::clicked, this, &MainWindow::onSettingsClicked);
     connect(m_exitBtn, &QPushButton::clicked, this, &MainWindow::onExitClicked);
 
 }
+// 添加游戏规则按钮的点击处理函数
+void MainWindow::onGameRulesClicked()
+{
+    // 创建自定义对话框
+    QDialog* rulesDialog = new QDialog(this);
+    rulesDialog->setWindowTitle("游戏规则");
+    rulesDialog->setFixedSize(800, 600);
+    rulesDialog->setStyleSheet("QDialog { border-image: url(:/images/next_chapter.png) stretch; }");
 
+    QVBoxLayout* dialogLayout = new QVBoxLayout(rulesDialog);
+
+    // 创建游戏规则文本
+    QLabel* rulesLabel = new QLabel(rulesDialog);
+    rulesLabel->setText(
+        "<h2>药材柜游戏规则</h2>"
+        "<p>游戏背景：在方形的中药柜上有大量抽屉，每个抽屉放着两种药材。"
+        "你需要打开正确的抽屉，取出符合药材清单的药材。</p>"
+        "<h3>游戏规则：</h3>"
+        "<ol>"
+        "<li>每个抽屉上标有两种药材名称，抽屉可能处于打开或关闭状态。</li>"
+        "<li>点击抽屉上的某个药材名称，所有标有这个药材名的抽屉都会翻转开合状态（打开变关闭，关闭变打开）。</li>"
+        "<li>左侧的药材清单显示游戏目标—每种药材需要的份数。</li>"
+        "<li>你的目标是：打开的抽屉中的所有药材加起来，恰好符合药材清单上的要求（种类和数量都完全一致）。</li>"
+        "<li>只有通过正确的操作顺序，才能让药柜的开合状态符合药材清单的要求。</li>"
+        "</ol>"
+        "<p>游戏提示：如果遇到困难，可以点击“窥天镜”(答案)按钮获取提示，或者使用“万能药材”忽视一种药物。</p>"
+        );
+
+    rulesLabel->setWordWrap(true);
+    rulesLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    rulesLabel->setStyleSheet(
+        "QLabel {"
+        "   color: white;"
+        "   font-size: 16px;"
+        "   background-color: rgba(0, 0, 0, 180);"
+        "   padding: 20px;"
+        "   border-radius: 10px;"
+        "}"
+        );
+
+    // 添加确定按钮
+    QPushButton* okButton = new QPushButton("我知道了", rulesDialog);
+    okButton->setMinimumSize(120, 40);
+    okButton->setStyleSheet(
+        "QPushButton {"
+        "   background-color: rgba(255, 255, 255, 200);"
+        "   border: 2px solid #8B4513;"
+        "   border-radius: 8px;"
+        "   color: #8B4513;"
+        "   font-weight: bold;"
+        "   font-size: 14px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(139, 69, 19, 200);"
+        "   color: white;"
+        "}"
+        );
+
+    // 创建布局
+    dialogLayout->addWidget(rulesLabel);
+    dialogLayout->addWidget(okButton, 0, Qt::AlignCenter);
+    dialogLayout->setContentsMargins(30, 30, 30, 30);
+
+    // 连接按钮点击事件
+    connect(okButton, &QPushButton::clicked, rulesDialog, &QDialog::accept);
+
+    // 显示对话框
+    rulesDialog->exec();
+    rulesDialog->deleteLater();
+}
 QPushButton* MainWindow::createMenuButton(const QString& text)
 {
     QPushButton* button = new QPushButton(text, this);
@@ -164,7 +236,82 @@ void MainWindow::loadChapter(int chapterNumber) {
 
             // 连接故事完成信号
     connect(storyMode, &StoryMode::storyCompleted, this, [this, storyPage, chapterNumber, saveManager](QJsonObject gameParams) {
-        // 创建游戏页面
+        // 对于第一章进行特殊处理
+        if (chapterNumber == 1) {
+            // 第一章不显示游戏，直接更新进度并显示"章节完成"对话框
+            saveManager->setStoryProgress(chapterNumber);
+            // 删除多余的不带参数的saveSaveFile()调用
+            saveManager->saveSaveFile(saveManager->getCurrentSaveFile());
+            qDebug() << "已保存游戏进度：章节" << chapterNumber;
+
+            // 创建自定义对话框
+            QDialog* nextChapterDialog = new QDialog(this);
+            nextChapterDialog->setWindowTitle("章节完成");
+            nextChapterDialog->setFixedSize(400, 300);
+            nextChapterDialog->setStyleSheet("QDialog { border-image: url(:/images/next_chapter.png) stretch; }");
+
+            QVBoxLayout* dialogLayout = new QVBoxLayout(nextChapterDialog);
+            QLabel* messageLabel = new QLabel("恭喜完成当前章节！是否继续下一章？", nextChapterDialog);
+            messageLabel->setStyleSheet("QLabel { color: white; font-size: 18px; background-color: rgba(0, 0, 0, 100); padding: 10px; border-radius: 5px; }");
+            messageLabel->setAlignment(Qt::AlignCenter);
+
+            QHBoxLayout* buttonLayout = new QHBoxLayout();
+            QPushButton* nextButton = new QPushButton("继续下一章", nextChapterDialog);
+            QPushButton* returnButton = new QPushButton("返回主菜单", nextChapterDialog);
+
+            nextButton->setMinimumHeight(40);
+            returnButton->setMinimumHeight(40);
+            nextButton->setStyleSheet("QPushButton { font-size: 16px; background-color: #4CAF50; color: white; border-radius: 5px; }"
+                "QPushButton:hover { background-color: #45a049; }");
+            returnButton->setStyleSheet("QPushButton { font-size: 16px; background-color: #f44336; color: white; border-radius: 5px; }"
+                "QPushButton:hover { background-color: #d32f2f; }");
+
+            buttonLayout->addWidget(nextButton);
+            buttonLayout->addWidget(returnButton);
+
+            dialogLayout->addStretch();
+            dialogLayout->addWidget(messageLabel);
+            dialogLayout->addStretch();
+            dialogLayout->addLayout(buttonLayout);
+            dialogLayout->addStretch();
+
+            // 返回主菜单按钮的点击事件
+            connect(returnButton, &QPushButton::clicked, [this, nextChapterDialog, storyPage, chapterNumber]() {
+                nextChapterDialog->accept();
+
+                // 显示进度已保存的提示
+                QMessageBox::information(this, "游戏进度", QString("已保存至第%1章").arg(chapterNumber));
+
+                // 切换回主菜单
+                m_stackedWidget->setCurrentWidget(m_centralWidget);
+
+                // 恢复主菜单音乐
+                MusicManager::instance()->switchMusic("taqing.mp3");
+
+                // 删除故事页面
+                m_stackedWidget->removeWidget(storyPage);
+                storyPage->deleteLater();
+            });
+
+            // 继续下一章按钮的点击事件
+            connect(nextButton, &QPushButton::clicked, [this, nextChapterDialog, storyPage, chapterNumber]() {
+                nextChapterDialog->accept();
+
+                // 删除当前故事页面
+                m_stackedWidget->removeWidget(storyPage);
+                storyPage->deleteLater();
+
+                // 加载下一章节
+                this->loadChapter(chapterNumber + 1);
+            });
+
+            // 显示对话框
+            nextChapterDialog->exec();
+            nextChapterDialog->deleteLater();
+
+            return;
+        }
+
         QWidget* gamePage = new QWidget();
         m_stackedWidget->addWidget(gamePage);
 
@@ -190,9 +337,7 @@ void MainWindow::loadChapter(int chapterNumber) {
 
                 // 设置游戏完成时的回调
         connect(game, &MedicineGame::gameCompleted, this, [this, gamePage, storyPage, chapterNumber, saveManager]() {
-            // 更新故事进度
-            saveManager->setStoryProgress(chapterNumber);  // 保存当前完成的章节编号
-            saveManager->saveSaveFile();
+            saveManager->setStoryProgress(chapterNumber);
             saveManager->saveSaveFile(saveManager->getCurrentSaveFile());
             qDebug() << "已保存游戏进度：章节" << chapterNumber;
 
@@ -201,7 +346,7 @@ void MainWindow::loadChapter(int chapterNumber) {
             QDialog* nextChapterDialog = new QDialog(this);
             nextChapterDialog->setWindowTitle("章节完成");
             nextChapterDialog->setFixedSize(400, 300);
-            nextChapterDialog->setStyleSheet("QDialog { border-image: url(qrc:/images/next_chapter.png) stretch; }");
+            nextChapterDialog->setStyleSheet("QDialog { border-image: url(:/images/next_chapter.png) stretch; }");
 
             QVBoxLayout* dialogLayout = new QVBoxLayout(nextChapterDialog);
             QLabel* messageLabel = new QLabel("恭喜完成当前章节！是否继续下一章？", nextChapterDialog);
@@ -250,7 +395,7 @@ void MainWindow::loadChapter(int chapterNumber) {
             });
 
             // 继续下一章按钮的点击事件
-            connect(nextButton, &QPushButton::clicked, [this, nextChapterDialog, gamePage, storyPage, chapterNumber, &saveManager]() {
+            connect(nextButton, &QPushButton::clicked, [this, nextChapterDialog, gamePage, storyPage, chapterNumber]() {
                 nextChapterDialog->accept();
 
                 // 删除当前游戏和故事页面

@@ -1,22 +1,24 @@
 {
-  "title": "第一章：药童初试",
-  "background": "bg_story1",
+  "title": "awsl",
+  "background": "bg_bedroom",
   "dialogues": [
     {
-      "character": "李师傅",
-      "avatar": "i_nervous.png",
-      "text": "孩子，你已经跟着我学了三个月了，今天我要考考你对药材的认识。"
+      "character": "主角",
+      "avatar": "i_modern.png",
+      "music": "ch01.mp3",
+      "text": "这是一个测试动画"
     },
     {
       "character": "主角",
-      "avatar": "i_smile.png",
-      "text": "师傅，我一定不会让您失望的！"
+      "avatar": "i_modern.png",
+      "text": "测试什么呢？"
     },
     {
-      "character": "李师傅",
-      "avatar": "i_surprise.png",
-      "text": "接下来要认真了！",
-      "music": "challenge.mp3"
+      "character": "主角",
+      "avatar": "i_modern.png",
+      "text": "啊，我死了",
+      "music": "hospital.mp3",
+      "background":"bg_hospital"
     }
   ],
   "game": {

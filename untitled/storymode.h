@@ -17,6 +17,7 @@ struct DialogueData {
     QString avatar;
     QString text;
     QString music;  // 新增音乐字段，存储音乐文件名
+    QString background; // 新增背景字段
 };
 
 class StoryMode : public QWidget
@@ -76,16 +77,15 @@ private slots:
     void onChapterTransitionFinished();
 
 private:
-    // ... 其他已有的成员变量 ...
     ChapterTransition* m_chapterTransition;
+    int m_currentChapterNumber;
 
-    // 在 private: 部分如果还没有 resizeEvent 函数声明，添加以下内容
 protected:
-    // ... 其他已有的保护成员函数 ...
     void resizeEvent(QResizeEvent *event) override;
 private:
     QPixmap m_currentAvatar;   // 存储原始头像
     void adjustAvatar();
+
 };
 
 #endif // STORYMODE_H

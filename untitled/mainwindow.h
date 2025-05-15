@@ -101,6 +101,14 @@ private:
     void designCustomGame(const QString& filePath);
     void loadChapter(int chapterNumber);
 
+private:
+
+    QPushButton* m_gameRulesBtn;  // 游戏规则按钮
+
+private slots:
+
+    void onGameRulesClicked();  // 游戏规则按钮点击事件处理函数
+
 };
 
 #endif // MAINWINDOW_H

@@ -71,12 +71,18 @@ bool MedicineList::isCompleted() const
 
 void MedicineList::updateDisplay()
 {
-    // Clear old medicine labels
+    // 清除旧的药材标签
     for (QLabel *label : m_medicineLabels) {
         m_layout->removeWidget(label);
         delete label;
     }
     m_medicineLabels.clear();
+    // 清除所有剩余项（包括之前添加的stretch）
+    QLayoutItem* item;
+    while ((item = m_layout->takeAt(m_layout->indexOf(m_titleLabel) + 1)) != nullptr) {
+        delete item;
+    }
+
 
             // Create new medicine labels
     QStringList medicineNames = m_targetList.keys();

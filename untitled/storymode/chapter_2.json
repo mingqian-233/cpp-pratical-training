@@ -1,11 +1,11 @@
 {
-  "title": "第二章：药童初试",
+  "title": "2",
   "background": "bg_story1",
   "dialogues": [
     {
       "character": "发撒单位",
       "avatar": "i_nervous.png",
-      "text": "顺丰翡翠城"
+      "text": "尼玛，代码好难写"
     },
     {
       "character": "主角",

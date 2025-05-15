@@ -91,7 +91,7 @@ void Setting::onReturnToMainClicked()
 {
     // 应用当前设置
     applySettings();
-
+    MusicManager::instance()->setMusic("taqing.wav");
     // 返回主菜单
     MainWindow::instance()->switchToMainPage();
 

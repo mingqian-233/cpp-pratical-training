@@ -12,6 +12,7 @@ QT += core gui widgets multimedia
 SOURCES += main.cpp \
            backgroundwidget.cpp \
            chaptertransition.cpp \
+           ecganimation.cpp \
            mainwindow.cpp \
            medicinedrawer.cpp \
            medicinegame.cpp \
@@ -20,11 +21,13 @@ SOURCES += main.cpp \
            savemanager.cpp \
            saveselectiondialog.cpp \
            setting.cpp \
+           spacetimevortexanimation.cpp \
            storymode.cpp
 
 # 头文件列表（所有 .h 文件）
 HEADERS += backgroundwidget.h \
            chaptertransition.h \
+           ecganimation.h \
            mainwindow.h \
            medicinedrawer.h \
            medicinegame.h \
@@ -33,6 +36,7 @@ HEADERS += backgroundwidget.h \
            savemanager.h \
            saveselectiondialog.h \
            setting.h \
+           spacetimevortexanimation.h \
            storymode.h
 
 # 资源文件列表（.qrc 文件）

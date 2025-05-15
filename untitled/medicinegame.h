@@ -33,6 +33,8 @@
 
 #include "medicinedrawer.h"
 #include "medicinelist.h"
+#include "setting.h"
+
 
 struct MedicineDrawerState {
     QString leftMedicine;
@@ -75,6 +77,8 @@ private slots:
 protected:
     void resizeEvent(QResizeEvent *event) override;
 
+private:
+    QMap<QString, int> calculateAllMedicines(); // 添加新方法声明
 
 
 private:
@@ -142,6 +146,14 @@ public:
 signals:
     // 添加以下信号
     void designOperationAdded(const QString& operation);
+    // 在 private 成员变量部分添加
+
+private:
+    QPushButton* m_settingsButton;
+
+    // 在 private slots 部分添加
+private slots:
+    void onSettingsClicked();
 
 };
 

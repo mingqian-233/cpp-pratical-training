@@ -27,5 +27,15 @@
         <file>storymode/chapter_4.json</file>
         <file>storymode/chapter_5.json</file>
         <file>storymode/chapter_6.json</file>
+        <file>images/bg_bedroom.png</file>
+        <file>music/bgm/hospital.mp3</file>
+        <file>images/bg_hospital.png</file>
+        <file>music/se/ecg_death.mp3</file>
+        <file>music/se/ecg_normal.mp3</file>
+        <file>music/se/ecg_warning.mp3</file>
+        <file>images/bg_grasshouse.png</file>
+        <file>images/bg_village.png</file>
+        <file>images/chang_an_modern_stressed.png</file>
+        <file>images/title.png</file>
     </qresource>
 </RCC>
