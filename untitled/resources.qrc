@@ -37,5 +37,6 @@
         <file>images/bg_village.png</file>
         <file>images/chang_an_modern_stressed.png</file>
         <file>images/title.png</file>
+        <file>images/lock.png</file>
     </qresource>
 </RCC>

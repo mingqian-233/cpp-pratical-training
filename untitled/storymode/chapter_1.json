@@ -4,18 +4,18 @@
   "dialogues": [
     {
       "character": "主角",
-      "avatar": "i_modern.png",
+      "avatar": "chang_an_modern_stressed.png",
       "music": "ch01.mp3",
       "text": "这是一个测试动画"
     },
     {
       "character": "主角",
-      "avatar": "i_modern.png",
+      "avatar": "chang_an_modern_stressed.png",
       "text": "测试什么呢？"
     },
     {
       "character": "主角",
-      "avatar": "i_modern.png",
+      "avatar": "chang_an_modern_stressed.png",
       "text": "啊，我死了",
       "music": "hospital.mp3",
       "background":"bg_hospital"

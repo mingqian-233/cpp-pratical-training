@@ -1,6 +1,7 @@
 
 
 #include "mainwindow.h"
+#include <QGraphicsDropShadowEffect>
 
     MainWindow* MainWindow::m_instance = nullptr;
 
@@ -129,6 +130,7 @@ void MainWindow::onGameRulesClicked()
         "<li>左侧的药材清单显示游戏目标—每种药材需要的份数。</li>"
         "<li>你的目标是：打开的抽屉中的所有药材加起来，恰好符合药材清单上的要求（种类和数量都完全一致）。</li>"
         "<li>只有通过正确的操作顺序，才能让药柜的开合状态符合药材清单的要求。</li>"
+        "<li>游戏分数规则：初始分数为(2000+行*列*100+药材种类*500)，每移动1步减少200分，自进入游戏开始，每过去1秒扣10分。</li>"
         "</ol>"
         "<p>游戏提示：如果遇到困难，可以点击“窥天镜”(答案)按钮获取提示，或者使用“万能药材”忽视一种药物。</p>"
         );
@@ -501,59 +503,99 @@ void MainWindow::onChallengeModeClicked()
     QWidget* levelSelectWidget = new QWidget();
     m_stackedWidget->addWidget(levelSelectWidget);
 
-    // Initialize music manager
+            // Initialize music manager
     MusicManager::instance()->switchMusic("challenge.mp3");
     // 创建背景
     BackgroundWidget* levelBackground = new BackgroundWidget(levelSelectWidget);
     levelBackground->setBackground("bg_challenge");
 
-    // 创建主布局
+            // 创建主布局
     QVBoxLayout* mainLayout = new QVBoxLayout(levelSelectWidget);
     mainLayout->setContentsMargins(0, 0, 0, 0);
 
-    // 创建标题
+            // 创建标题
     QLabel* titleLabel = new QLabel("挑战模式 - 选择难度");
     titleLabel->setAlignment(Qt::AlignCenter);
     titleLabel->setStyleSheet("font-size: 24px; font-weight: bold; color: white; background-color: rgba(0, 0, 0, 150); padding: 10px; border-radius: 10px;");
 
-    // 创建关卡选择网格
+            // 获取已解锁的关卡
+    int unlockedLevel = m_saveManager->getchallengeUnlockedLevel();
+
+            // 创建关卡选择网格
     QGridLayout* levelGrid = new QGridLayout();
     levelGrid->setSpacing(20);
 
-    // 创建9个关卡按钮
+            // 创建9个关卡按钮
     for (int row = 0; row < 3; ++row) {
         for (int col = 0; col < 3; ++col) {
             int level = row * 3 + col + 1;
-            QPushButton* levelButton = new QPushButton(QString::number(level));
+
+            // 创建一个容器来放置按钮和分数标签
+            QWidget* levelContainer = new QWidget();
+            QVBoxLayout* containerLayout = new QVBoxLayout(levelContainer);
+            containerLayout->setSpacing(5);
+
+            QPushButton* levelButton = new QPushButton();
             levelButton->setMinimumSize(100, 100);
             levelButton->setFont(QFont("Microsoft YaHei", 18, QFont::Bold));
-            levelButton->setStyleSheet(
-                "QPushButton {"
-                "    background-color: rgba(255, 255, 255, 180);"
-                "    border: 3px solid #8B4513;"
-                "    border-radius: 15px;"
-                "    color: #8B4513;"
-                "}"
-                "QPushButton:hover {"
-                "    background-color: rgba(139, 69, 19, 180);"
-                "    color: white;"
-                "}"
-                "QPushButton:pressed {"
-                "    background-color: #654321;"
-                "    border: 3px solid #654321;"
-                "}"
-                );
 
-            // 连接按钮信号到启动关卡的槽
-            connect(levelButton, &QPushButton::clicked, this, [this, level]() {
-                startChallengeLevel(level);
-            });
+            // 根据解锁状态设置按钮内容和样式
+            if (level <= unlockedLevel) {
+                // 已解锁的关卡显示数字
+                levelButton->setText(QString::number(level));
+                levelButton->setStyleSheet(
+                    "QPushButton {"
+                    "    background-color: rgba(255, 255, 255, 180);"
+                    "    border: 3px solid #8B4513;"
+                    "    border-radius: 15px;"
+                    "    color: #8B4513;"
+                    "}"
+                    "QPushButton:hover {"
+                    "    background-color: rgba(139, 69, 19, 180);"
+                    "    color: white;"
+                    "}"
+                    "QPushButton:pressed {"
+                    "    background-color: #654321;"
+                    "    border: 3px solid #654321;"
+                    "}"
+                    );
 
-            levelGrid->addWidget(levelButton, row, col);
+                // 显示最高分
+                int highScore = m_saveManager->getchallengeHighScore(level);
+                QLabel* scoreLabel = new QLabel(QString("最高分: %1").arg(highScore));
+                scoreLabel->setAlignment(Qt::AlignCenter);
+                scoreLabel->setStyleSheet("color: #8B4513; font-weight: bold; font-size: 14px;");
+                containerLayout->addWidget(scoreLabel);
+
+                // 连接按钮信号到启动关卡的槽
+                connect(levelButton, &QPushButton::clicked, this, [this, level]() {
+                    startChallengeLevel(level);
+                });
+            } else {
+                // 未解锁的关卡显示锁图标
+                levelButton->setIcon(QIcon(":/images/lock.png"));
+                levelButton->setIconSize(QSize(60, 60));
+                levelButton->setStyleSheet(
+                    "QPushButton {"
+                    "    background-color: rgba(100, 100, 100, 180);"
+                    "    border: 3px solid #555555;"
+                    "    border-radius: 15px;"
+                    "}"
+                    );
+
+                // 未解锁提示标签
+                QLabel* lockedLabel = new QLabel("未解锁");
+                lockedLabel->setAlignment(Qt::AlignCenter);
+                lockedLabel->setStyleSheet("color: #555555; font-weight: bold; font-size: 14px;");
+                containerLayout->addWidget(lockedLabel);
+            }
+
+            containerLayout->addWidget(levelButton);
+            levelGrid->addWidget(levelContainer, row, col);
         }
     }
 
-    // 创建返回按钮
+            // 创建返回按钮
     QPushButton* backButton = new QPushButton("返回主菜单");
     backButton->setMinimumSize(150, 50);
     backButton->setFont(QFont("Microsoft YaHei", 12, QFont::Bold));
@@ -574,7 +616,7 @@ void MainWindow::onChallengeModeClicked()
         "}"
         );
 
-    // 连接返回按钮
+            // 连接返回按钮
     connect(backButton, &QPushButton::clicked, this, [this, levelSelectWidget]() {
         m_stackedWidget->setCurrentWidget(m_centralWidget);
         // 延迟删除关卡选择界面
@@ -583,12 +625,12 @@ void MainWindow::onChallengeModeClicked()
         MusicManager::instance()->switchMusic("taqing.mp3");
     });
 
-    // 创建一个容器来放置关卡网格
+            // 创建一个容器来放置关卡网格
     QWidget* gridContainer = new QWidget();
     gridContainer->setLayout(levelGrid);
     gridContainer->setStyleSheet("background-color: rgba(255, 235, 205, 150); border-radius: 20px; padding: 20px;");
 
-    // 将所有元素添加到主布局
+            // 将所有元素添加到主布局
     QVBoxLayout* contentLayout = new QVBoxLayout();
     contentLayout->addWidget(titleLabel, 0, Qt::AlignCenter);
     contentLayout->addSpacing(20);
@@ -605,55 +647,68 @@ void MainWindow::onChallengeModeClicked()
 
     mainLayout->addWidget(levelBackground);
 
-    // 切换到关卡选择界面
+            // 切换到关卡选择界面
     m_stackedWidget->setCurrentWidget(levelSelectWidget);
 }
 
-// 添加到MainWindow类的私有方法声明中
+// 修改 startChallengeLevel 函数
 void MainWindow::startChallengeLevel(int level)
 {
     // 根据难度级别计算游戏参数
     int medicineTypes = 5 + level;         // 药材种类数随难度增加
     int rows = 2 + (level - 1) / 3;        // 行数：难度1-3为2行，4-6为3行，7-9为4行
     int cols = 2 + (level - 1) % 3;        // 列数：难度1,4,7为2列，2,5,8为3列，3,6,9为4列
-    int operationCount = level * 1.5;        // 随机操作次数随难度增加
+    int operationCount = level * 1.5;      // 随机操作次数随难度增加
 
-    // 创建游戏页面
+            // 创建游戏页面
     QWidget* gamePage = new QWidget();
     m_stackedWidget->addWidget(gamePage);
 
-    // 创建布局
+            // 创建布局
     QVBoxLayout* gameLayout = new QVBoxLayout(gamePage);
     gameLayout->setContentsMargins(0, 0, 0, 0);
 
-    // 创建游戏实例
+            // 创建游戏实例
     MedicineGame* game = new MedicineGame(gamePage);
     game->initGame(medicineTypes, rows, cols, operationCount);
 
-    // 添加到布局
+            // 添加到布局
     gameLayout->addWidget(game);
 
-    // 切换到游戏页面
+            // 切换到游戏页面
     m_stackedWidget->setCurrentWidget(gamePage);
-
     // 设置游戏完成时的回调
-    connect(game, &MedicineGame::gameCompleted, this, [this, gamePage]() {
+    connect(game, &MedicineGame::gameCompleted, this, [this, gamePage, level, game]() {
+        // 获取游戏分数并更新存档
+        int score = game->getScore();
+        int currentHighScore = m_saveManager->getchallengeHighScore(level);
+
+        // 如果新分数更高，则更新存档
+        if (score > currentHighScore) {
+            m_saveManager->setchallengeHighScore(level, score);
+            m_saveManager->saveSaveFile(m_saveManager->getCurrentSaveFile());
+
+            // 显示新高分提示
+            QMessageBox::information(this, "新高分!",
+                                     QString("恭喜你获得了新的高分: %1分!").arg(score));
+        }
+
         // 延迟一段时间后返回选关界面
         QTimer::singleShot(2000, this, [this, gamePage]() {
-            // 获取选关界面
-            QWidget* levelSelectWidget = m_stackedWidget->widget(m_stackedWidget->count() - 2);
-
-            // 切换回选关界面
-            m_stackedWidget->setCurrentWidget(levelSelectWidget);
-
-            // 删除游戏页面
+            // 删除现有游戏页面
             m_stackedWidget->removeWidget(gamePage);
             gamePage->deleteLater();
 
+            // 删除旧的选关界面
+            QWidget* oldLevelSelectWidget = m_stackedWidget->widget(m_stackedWidget->count() - 1);
+            m_stackedWidget->removeWidget(oldLevelSelectWidget);
+            oldLevelSelectWidget->deleteLater();
+
+            // 重新创建选关界面（重新调用onChallengeModeClicked）
+            onChallengeModeClicked();
         });
     });
 }
-
 
 // ... existing code ...
 void MainWindow::onCustomModeClicked()
@@ -787,14 +842,13 @@ void MainWindow::createCustomLevel()
     createDialog->exec();
     createDialog->deleteLater();
 }
-
 void MainWindow::setupCustomDrawers(int rows, int cols, const QStringList& medicines)
 {
     // 创建药柜设置界面
     QWidget* drawerSetupWidget = new QWidget();
     m_stackedWidget->addWidget(drawerSetupWidget);
 
-    // 创建背景
+            // 创建背景
     BackgroundWidget* bg = new BackgroundWidget(drawerSetupWidget);
     bg->setBackground("bg_custom");
 
@@ -802,31 +856,56 @@ void MainWindow::setupCustomDrawers(int rows, int cols, const QStringList& medic
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->addWidget(bg);
 
-    // 创建内容布局
-    QHBoxLayout* contentLayout = new QHBoxLayout();
+            // 创建标题
+    QLabel* titleLabel = new QLabel("自定义药柜设置");
+    titleLabel->setAlignment(Qt::AlignCenter);
+    titleLabel->setStyleSheet("font-size: 24px; font-weight: bold; color: #8B4513; background-color: rgba(255, 245, 225, 0.8); padding: 10px; border-radius: 10px;");
 
-    // 左侧药材列表
+            // 创建内容布局
+    QHBoxLayout* contentLayout = new QHBoxLayout();
+    contentLayout->setSpacing(20);
+
+            // 左侧药材列表
     QGroupBox* medicineGroup = new QGroupBox("可用药材");
+    medicineGroup->setStyleSheet("QGroupBox { background-color: rgba(255, 245, 225, 0.8); border: 2px solid #8B4513; border-radius: 10px; font-weight: bold; color: #8B4513; padding: 10px; } "
+        "QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; }");
+
     QVBoxLayout* medicineLayout = new QVBoxLayout(medicineGroup);
+    medicineLayout->setContentsMargins(15, 25, 15, 15);
+
     QListWidget* medicineListWidget = new QListWidget();
+    medicineListWidget->setStyleSheet("QListWidget { background-color: rgba(255, 250, 240, 0.9); border: 1px solid #CD853F; border-radius: 5px; }"
+        "QListWidget::item { padding: 6px; font-size: 14px; color: #654321; }"
+        "QListWidget::item:selected { background-color: #DEB887; color: white; }");
+
     for (const QString& med : medicines) {
         new QListWidgetItem(med, medicineListWidget);
     }
     medicineLayout->addWidget(medicineListWidget);
 
-    // 右侧药柜设置
+            // 右侧药柜设置
     QGroupBox* drawerGroup = new QGroupBox("药柜设置");
-    QVBoxLayout* drawerLayoutContainer = new QVBoxLayout(drawerGroup);
-    QGridLayout* drawersGrid = new QGridLayout();
-    drawersGrid->setSpacing(10);
+    drawerGroup->setStyleSheet("QGroupBox { background-color: rgba(255, 245, 225, 0.8); border: 2px solid #8B4513; border-radius: 10px; font-weight: bold; color: #8B4513; padding: 10px; } "
+        "QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; }");
 
-    // 储存药柜和抽屉状态的数据结构
+    QVBoxLayout* drawerLayoutContainer = new QVBoxLayout(drawerGroup);
+    drawerLayoutContainer->setContentsMargins(15, 25, 15, 15);
+
+    QGridLayout* drawersGrid = new QGridLayout();
+    drawersGrid->setSpacing(15);
+
+            // 储存药柜和抽屉状态的数据结构
     QVector<QVector<QPushButton*>> drawerButtons;
     QVector<QVector<QComboBox*>> leftComboBoxes;
     QVector<QVector<QComboBox*>> rightComboBoxes;
     QVector<QVector<bool>> drawerStates;
 
-    // 创建药柜网格
+            // 创建统一样式的下拉框样式
+    QString comboStyle = "QComboBox { background-color: rgba(255, 250, 240, 0.9); border: 1px solid #CD853F; border-radius: 5px; padding: 3px; color: #654321; }"
+        "QComboBox::drop-down { border: 0px; }"
+        "QComboBox QAbstractItemView { background-color: #FFF8DC; selection-background-color: #DEB887; selection-color: white; border: 1px solid #CD853F; }";
+
+            // 创建药柜网格
     for (int r = 0; r < rows; r++) {
         QVector<QPushButton*> rowButtons;
         QVector<QComboBox*> rowLeftCombos;
@@ -836,41 +915,75 @@ void MainWindow::setupCustomDrawers(int rows, int cols, const QStringList& medic
         for (int c = 0; c < cols; c++) {
             // 创建药柜容器
             QWidget* drawerWidget = new QWidget();
-            QHBoxLayout* drawerLayout = new QHBoxLayout(drawerWidget);
+            QVBoxLayout* drawerLayout = new QVBoxLayout(drawerWidget);
             drawerLayout->setContentsMargins(5, 5, 5, 5);
+            drawerLayout->setSpacing(5);
 
-            // 左侧药材选择
+                    // 药柜下拉框和按钮水平布局
+            QHBoxLayout* selectionLayout = new QHBoxLayout();
+
+                    // 左侧药材选择
             QComboBox* leftCombo = new QComboBox();
             leftCombo->addItems(medicines);
+            leftCombo->setStyleSheet(comboStyle);
+            leftCombo->setFixedWidth(80);
 
-            // 右侧药材选择
+                    // 右侧药材选择
             QComboBox* rightCombo = new QComboBox();
             rightCombo->addItems(medicines);
+            rightCombo->setStyleSheet(comboStyle);
+            rightCombo->setFixedWidth(80);
             if (medicines.size() > 1) {
                 rightCombo->setCurrentIndex(1); // 默认选择第二种药材
             }
 
-            // 药柜按钮（显示开/关状态）
-            QPushButton* drawerBtn = new QPushButton("关闭");
+                    // 药柜按钮（显示开/关状态）
+            QPushButton* drawerBtn = new QPushButton();
             drawerBtn->setCheckable(true);
+            drawerBtn->setFixedSize(160, 80);
+
+            // 设置抽屉背景图片和样式
             drawerBtn->setStyleSheet(
-                "QPushButton { background-color: #f0d0a0; border: 2px solid #805030; border-radius: 5px; }"
-                "QPushButton:checked { background-color: #80c080; }"
+                "QPushButton { border-image: url(:/images/drawer.png) stretch; border: none; color: white; font-weight: bold; }"
+                "QPushButton:checked { border-image: url(:/images/drawer.png) stretch; }"
+                "QPushButton:hover { opacity: 0.9; }"
                 );
 
-            // 连接药柜按钮点击事件
-            connect(drawerBtn, &QPushButton::toggled, [drawerBtn](bool checked) {
-                drawerBtn->setText(checked ? "打开" : "关闭");
+            // 添加状态标签
+            QLabel* stateLabel = new QLabel("关闭");
+            stateLabel->setAlignment(Qt::AlignCenter);
+            stateLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #8B4513; background-color: rgba(255, 255, 255, 0.7); border-radius: 5px; padding: 3px;");
+
+                    // 连接药柜按钮点击事件
+            connect(drawerBtn, &QPushButton::toggled, [stateLabel](bool checked) {
+                stateLabel->setText(checked ? "打开" : "关闭");
+                stateLabel->setStyleSheet(checked ?
+                                              "font-size: 14px; font-weight: bold; color: white; background-color: rgba(50, 150, 50, 0.7); border-radius: 5px; padding: 3px;" :
+                                              "font-size: 14px; font-weight: bold; color: #8B4513; background-color: rgba(255, 255, 255, 0.7); border-radius: 5px; padding: 3px;");
             });
 
-            // 添加组件到布局
-            drawerLayout->addWidget(leftCombo);
-            drawerLayout->addWidget(drawerBtn);
-            drawerLayout->addWidget(rightCombo);
+                    // 添加组件到布局
+            selectionLayout->addWidget(leftCombo);
+            selectionLayout->addStretch();
+            selectionLayout->addWidget(rightCombo);
+
+            drawerLayout->addLayout(selectionLayout);
+            drawerLayout->addWidget(drawerBtn, 0, Qt::AlignCenter);
+            drawerLayout->addWidget(stateLabel, 0, Qt::AlignCenter);
+
+                    // 添加阴影效果
+            QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
+            shadowEffect->setBlurRadius(15);
+            shadowEffect->setColor(QColor(0, 0, 0, 80));
+            shadowEffect->setOffset(3, 3);
+            drawerWidget->setGraphicsEffect(shadowEffect);
+
+            // 设置抽屉容器的样式
+            drawerWidget->setStyleSheet("background-color: rgba(255, 250, 240, 0.7); border-radius: 10px; padding: 5px;");
 
             drawersGrid->addWidget(drawerWidget, r, c);
 
-            // 保存到数据结构
+                    // 保存到数据结构
             rowButtons.append(drawerBtn);
             rowLeftCombos.append(leftCombo);
             rowRightCombos.append(rightCombo);
@@ -885,42 +998,95 @@ void MainWindow::setupCustomDrawers(int rows, int cols, const QStringList& medic
 
     drawerLayoutContainer->addLayout(drawersGrid);
 
+            // 创建按钮区域
+    QWidget* buttonContainer = new QWidget();
+    buttonContainer->setStyleSheet("background-color: rgba(255, 250, 240, 0.7); border-radius: 10px; padding: 10px;");
+
+    QHBoxLayout* btnLayout = new QHBoxLayout(buttonContainer);
+    btnLayout->setSpacing(20);
+
     // 创建保存按钮
     QPushButton* saveBtn = createMenuButton("储存关卡");
-    QPushButton* backBtn = createMenuButton("返回");
+    saveBtn->setFixedSize(150, 50);
+    saveBtn->setStyleSheet(
+        "QPushButton {"
+        "    background-color: rgba(139, 69, 19, 0.8);"
+        "    border: 2px solid #654321;"
+        "    border-radius: 10px;"
+        "    color: white;"
+        "    font-weight: bold;"
+        "    font-size: 16px;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: rgba(160, 82, 45, 0.9);"
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #654321;"
+        "}"
+        );
 
-    QHBoxLayout* btnLayout = new QHBoxLayout();
+    QPushButton* backBtn = createMenuButton("返回");
+    backBtn->setFixedSize(150, 50);
+    backBtn->setStyleSheet(
+        "QPushButton {"
+        "    background-color: rgba(178, 34, 34, 0.8);"
+        "    border: 2px solid #8B0000;"
+        "    border-radius: 10px;"
+        "    color: white;"
+        "    font-weight: bold;"
+        "    font-size: 16px;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: rgba(205, 92, 92, 0.9);"
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #8B0000;"
+        "}"
+        );
+
     btnLayout->addWidget(backBtn);
+    btnLayout->addStretch();
     btnLayout->addWidget(saveBtn);
 
-    drawerLayoutContainer->addLayout(btnLayout);
+    drawerLayoutContainer->addWidget(buttonContainer);
 
-    // 添加组件到内容布局
+            // 添加组件到内容布局
     contentLayout->addWidget(medicineGroup, 1);
     contentLayout->addWidget(drawerGroup, 3);
 
-    // 创建内容容器
+            // 创建内容容器
     QWidget* contentWidget = new QWidget();
-    contentWidget->setLayout(contentLayout);
-    contentWidget->setStyleSheet("background-color: rgba(255, 255, 255, 200); border-radius: 10px;");
+    QVBoxLayout* containerLayout = new QVBoxLayout(contentWidget);
+    containerLayout->setContentsMargins(20, 20, 20, 20);
+    containerLayout->setSpacing(20);
+    containerLayout->addWidget(titleLabel, 0, Qt::AlignCenter);
+    containerLayout->addLayout(contentLayout);
 
-    // 将内容添加到背景
+            // 将内容添加到背景
     QVBoxLayout* bgLayout = new QVBoxLayout(bg);
-    bgLayout->addWidget(contentWidget);
+    bgLayout->addWidget(contentWidget, 0, Qt::AlignCenter);
 
-    // 连接返回按钮
+            // 连接返回按钮
     connect(backBtn, &QPushButton::clicked, [this, drawerSetupWidget]() {
         m_stackedWidget->setCurrentWidget(m_centralWidget);
         drawerSetupWidget->deleteLater();
     });
 
-    // 连接保存按钮
+            // 连接保存按钮
     connect(saveBtn, &QPushButton::clicked, [this, rows, cols, drawerButtons, leftComboBoxes, rightComboBoxes, medicines, drawerSetupWidget]() {
         // 创建保存数据
         QMap<QString, int> medicineList;
         QJsonArray drawersData;
 
-        // 收集药柜数据
+                // 收集药柜数据
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                QString leftMed = leftComboBoxes[r][c]->currentText();
+                QString rightMed = rightComboBoxes[r][c]->currentText();
+                medicineList[leftMed] =0;
+                medicineList[rightMed] = 0;
+            }
+        }
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 QPushButton* btn = drawerButtons[r][c];
@@ -928,13 +1094,13 @@ void MainWindow::setupCustomDrawers(int rows, int cols, const QStringList& medic
                 QString rightMed = rightComboBoxes[r][c]->currentText();
                 bool isOpen = btn->isChecked();
 
-                // 如果抽屉是打开的，添加药材到清单
+                        // 如果抽屉是打开的，添加药材到清单
                 if (isOpen) {
                     medicineList[leftMed] = medicineList.value(leftMed, 0) + 1;
                     medicineList[rightMed] = medicineList.value(rightMed, 0) + 1;
                 }
 
-                // 保存抽屉数据
+                        // 保存抽屉数据
                 QJsonObject drawer;
                 drawer["row"] = r;
                 drawer["col"] = c;
@@ -945,12 +1111,12 @@ void MainWindow::setupCustomDrawers(int rows, int cols, const QStringList& medic
             }
         }
 
-        // 创建JSON数据
+                // 创建JSON数据
         QJsonObject levelData;
         levelData["rows"] = rows;
         levelData["cols"] = cols;
 
-        // 药材清单
+                // 药材清单
         QJsonArray medicineListData;
         for (auto it = medicineList.begin(); it != medicineList.end(); ++it) {
             QJsonObject med;
@@ -962,13 +1128,13 @@ void MainWindow::setupCustomDrawers(int rows, int cols, const QStringList& medic
         levelData["medicineList"] = medicineListData;
         levelData["drawers"] = drawersData;
 
-        // 确保目录存在
+                // 确保目录存在
         QDir dir("./customlevel");
         if (!dir.exists()) {
             dir.mkpath(".");
         }
 
-        // 生成文件名
+                // 生成文件名
         QString fileName = QInputDialog::getText(
             drawerSetupWidget,
             "保存关卡",
@@ -981,18 +1147,18 @@ void MainWindow::setupCustomDrawers(int rows, int cols, const QStringList& medic
             return;
         }
 
-        // 确保文件名合法
+                // 确保文件名合法
         fileName = fileName.replace(QRegularExpression("[\\\\/:*?\"<>|]"), "_");
 
-        // 获取当前系统时间并格式化为字符串
+                // 获取当前系统时间并格式化为字符串
         QDateTime currentTime = QDateTime::currentDateTime();
         QString timeStr = currentTime.toString("yyyyMMdd_HHmmss");
 
-        // 将时间添加到文件名后面
+                // 将时间添加到文件名后面
         QString fileNameWithTime = QString("%1_%2").arg(fileName).arg(timeStr);
         QString filePath = QString("./customlevel/%1.json").arg(fileNameWithTime);
 
-        // 保存到文件
+                // 保存到文件
         QFile file(filePath);
         if (file.open(QIODevice::WriteOnly)) {
             QJsonDocument doc(levelData);
@@ -1001,14 +1167,14 @@ void MainWindow::setupCustomDrawers(int rows, int cols, const QStringList& medic
 
             QMessageBox::information(drawerSetupWidget, "成功", "关卡已保存！");
 
-            // 让玩家设计游戏
+                    // 让玩家设计游戏
             designCustomGame(filePath);
         } else {
             QMessageBox::warning(drawerSetupWidget, "错误", "无法保存文件！");
         }
     });
 
-    // 切换到药柜设置界面
+            // 切换到药柜设置界面
     m_stackedWidget->setCurrentWidget(drawerSetupWidget);
 }
 

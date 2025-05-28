@@ -154,6 +154,19 @@ private:
     // 在 private slots 部分添加
 private slots:
     void onSettingsClicked();
+    // 在类声明中添加以下成员变量和函数
+private:
+    int m_score;        // 当前分数
+    int m_moveCount;    // 移动步数
+    QTimer* m_timer;    // 计时器
+    QTime m_startTime;  // 游戏开始时间
+
+public:
+    // 获取当前分数
+    int getScore() const ;
+
+private slots:
+    void updateScore(); // 定时更新分数
 
 };
 

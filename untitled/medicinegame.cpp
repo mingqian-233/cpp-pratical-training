@@ -1,19 +1,25 @@
 // medicinegame.cpp
 #include "medicinegame.h"
 
-MedicineGame::MedicineGame(QWidget *parent,bool design)
+MedicineGame::MedicineGame(QWidget *parent, bool design)
     : QWidget(parent)
-
       , m_random(QRandomGenerator::securelySeeded())
       , m_background(nullptr)
       , m_medicineList(nullptr)
       , m_drawerLayout(nullptr)
       , m_answerButton(nullptr)
-      , m_rows(0)
+      , m_rows(0)  // 确保初始化为nullptr
       , m_cols(0)
       , m_gameOver(false)
+      , m_settingsButton(nullptr)
+      , m_score(0)
+      , m_moveCount(0)
 {
     loadMedicineNames();
+
+            // 创建计时器并连接槽函数
+    m_timer = new QTimer(this);
+    connect(m_timer, &QTimer::timeout, this, &MedicineGame::updateScore);
 
     // Create main layout
     QHBoxLayout *mainLayout = new QHBoxLayout(this);
@@ -48,13 +54,11 @@ MedicineGame::MedicineGame(QWidget *parent,bool design)
     // 设置第 0 列（m_medicineList） stretch=0，第 1 列（rightLayout） stretch=1
     mainLayout->setStretch(0, 0);  // 左侧不拉伸
     mainLayout->setStretch(1, 1);  // 右侧占满剩余空间
+
     if(!design){
-
         // 在 MedicineGame 构造函数里，替换原有对 m_answerButton 和 m_allPowerfulButton 的添加方式：
-
         // 新建一个横向布局，用来并排放置两个按钮
         QHBoxLayout* toolButtonsLayout = new QHBoxLayout();
-
         // 窥天镜按钮
         m_answerButton = new QPushButton("窥天镜");
         m_answerButton->setIcon(QIcon(":/images/aethergazer.png"));
@@ -97,21 +101,33 @@ MedicineGame::MedicineGame(QWidget *parent,bool design)
         m_settingsButton->move(width()-100-20, 20); // 初始位置设置在右上角
         connect(m_settingsButton, &QPushButton::clicked, this, &MedicineGame::onSettingsClicked);
         m_settingsButton->raise(); // 确保在最上层
-
     }
 
 }
+
+// 添加更新分数的槽函数
+void MedicineGame::updateScore()
+{
+    // 每秒减10分
+    m_score -= 10;
+
+    // 防止分数为负
+    if (m_score < 0) {
+        m_score = 0;
+    }
+}
+int MedicineGame::getScore() const{ return this->m_score > 0 ? this->m_score : 0; }
 void MedicineGame::resizeEvent(QResizeEvent *event)
 {
-    QWidget::resizeEvent(event); // Call the base class implementation
+    QWidget::resizeEvent(event);
 
-            // Update background size when the widget is resized
+            // 更新背景大小
     if (m_background) {
         m_background->setGeometry(0, 0, width(), height());
     }
-            //
-    // 重新定位设置按钮
-    if (m_settingsButton) {
+
+            // 只在设置按钮存在时更新其位置
+    if (m_settingsButton && m_settingsButton->parent() == this) {
         m_settingsButton->move(width()-100-20, 20);
     }
 }
@@ -178,6 +194,10 @@ void MedicineGame::showMedicineSelector()
 
 MedicineGame::~MedicineGame()
 {
+    // 停止计时器
+    if (m_timer->isActive()) {
+        m_timer->stop();
+    }
     // 清理资源
     for (MedicineDrawer *drawer : m_drawers) {
         delete drawer;
@@ -192,6 +212,15 @@ void MedicineGame::initGame(int medicineTypes, int rows, int cols, int operation
     m_rows = rows;
     m_cols = cols;
     m_gameOver = false;
+    // 重置移动计数
+    m_moveCount = 0;
+
+    // 计算初始分数
+    m_score = 2000 + rows * cols * 100 + medicineTypes * 500;
+
+    // 开始计时器
+    m_startTime = QTime::currentTime();
+    m_timer->start(1000); // 每秒触发一次
 
     // Clean up existing drawers
     for (MedicineDrawer *drawer : m_drawers) {
@@ -289,17 +318,20 @@ void MedicineGame::setBackground(const QString &imageName)
     }
 }
 
-
-
 void MedicineGame::onMedicineClicked(const QString &medicineName)
 {
     // 如果游戏已结束，则不处理点击
     if (m_gameOver) {
         return;
     }
-
+    if (m_operations.empty()){
+        throw std::runtime_error("游戏理应已经结束了，这里是个bug，请反馈至开发者");
+    }
     // 播放点击音效
     MusicManager::instance()->playEffect("click.mp3");
+    // 记录移动并减少分数
+    m_moveCount++;
+    m_score -= 200;
 
     // 翻转包含该药材的抽屉
     toggleDrawers(medicineName);
@@ -554,20 +586,30 @@ bool MedicineGame::checkGameOver()
     for (const QString &med : m_excludedMedicines) {
         current.remove(med);
         target.remove(med);
+        qDebug()<<"被移除的是"<<med;
     }
+    qDebug()<<current;
+    qDebug()<<target;
+
     if (current == target) {
+        m_timer->stop();
+
         emit gameCompleted();  // 发送游戏成功信号
         return true;// 只有当两张表一致时才算过关
     }
     else return false;
 }
-
-
 QMap<QString, int> MedicineGame::calculateCurrentList()
 {
     QMap<QString, int> list;
 
-            // 计算当前打开的抽屉中的药材
+    // 首先添加目标清单中的所有药材（确保所有药材都存在于结果中）
+    QMap<QString, int> targetList = m_medicineList->targetList();
+    for (auto it = targetList.begin(); it != targetList.end(); ++it) {
+        list[it.key()] = 0;  // 初始化为0
+    }
+
+    // 计算当前打开的抽屉中的药材
     for (MedicineDrawer *drawer : m_drawers) {
         if (drawer->isOpen()) {
             QString leftMedicine = drawer->leftMedicine();
@@ -604,9 +646,11 @@ QMap<QString, int> MedicineGame::calculateAllMedicines()
     return list;
 }
 
-// 这个方法应该更简单，只关注游戏逻辑而不是UI
 void MedicineGame::designCustomGame(const QJsonObject& levelData)
 {
+    // 设置设计模式标志
+    m_designMode = true;
+
     // 清理现有状态
     for (MedicineDrawer *drawer : m_drawers) {
         delete drawer;
@@ -617,6 +661,7 @@ void MedicineGame::designCustomGame(const QJsonObject& levelData)
     m_excludedMedicines.clear();
     m_gameOver = false;
 
+    m_designOperations.clear();
     // 读取行列数
     m_rows = levelData["rows"].toInt();
     m_cols = levelData["cols"].toInt();
@@ -732,6 +777,7 @@ QJsonObject MedicineGame::finishDesign(const QJsonObject& originalData)
 }
 void MedicineGame::initCustomGame(const QJsonObject& levelData)
 {
+
     // 清理现有状态
     for (MedicineDrawer *drawer : m_drawers) {
         delete drawer;
@@ -746,8 +792,27 @@ void MedicineGame::initCustomGame(const QJsonObject& levelData)
     m_rows = levelData["rows"].toInt();
     m_cols = levelData["cols"].toInt();
 
-            // 处理抽屉数据
+            // 重置移动计数和分数
+    m_moveCount = 0;
+
+            // 计算初始分数
+    int medicineCount = 0;
+    QSet<QString> uniqueMedicines;
+
+            // 计算唯一药材数量
     QJsonArray drawersData = levelData["drawers"].toArray();
+    for (const QJsonValue& drawerValue : drawersData) {
+        QJsonObject drawer = drawerValue.toObject();
+        uniqueMedicines.insert(drawer["leftMedicine"].toString());
+        uniqueMedicines.insert(drawer["rightMedicine"].toString());
+    }
+
+    medicineCount = uniqueMedicines.size();
+    m_score = 2000 + m_rows * m_cols * 100 + medicineCount * 500;
+
+            // 开始计时器
+    m_startTime = QTime::currentTime();
+    m_timer->start(1000);
 
             // 创建抽屉
     for (const QJsonValue& drawerValue : drawersData) {
