@@ -1,28 +1,79 @@
 {
-  "title": "3",
-  "background": "bg_story1",
-  "dialogues": [
+  "title": "第三章：院考",
+  "background": "bg_street",
+  "pre_game_dialogues": [
     {
-      "character": "李师傅",
-      "avatar": "i_nervous.png",
-      "text": "孩子，你已经跟着我学了三个月了，今天我要考考你对药材的认识。"
+      "character": "（画外音）",
+      "avatar": null,
+      "music": "BGM_Chapter3.mp3",
+      "text": "数日后，在村民们的支持下，我带着奶龙来到了繁华的京城。太医署的入学考试，远比我想象的要严格和热闹。"
     },
     {
-      "character": "主角",
-      "avatar": "i_smile.png",
-      "text": "师傅，我一定不会让您失望的！"
+      "character": "（画外音）",
+      "avatar": null,
+      "background": "bg_taiyishu",
+      "text": "太医署门前学子汇聚，其中不乏衣着光鲜的世家子弟，我一身粗布衣，显得有些格格不入。"
     },
     {
-      "character": "李师傅",
-      "avatar": "i_surprise.png",
-      "text": "接下来要认真了！",
-      "music": "challenge.mp3"
+      "character": "常安",
+      "avatar": "changan_nervous.png",
+      "background": "bg_examroom",
+      "text": "（考试分为数场，从药材辨识到药性问答…幸好有《神农残卷》，当我凝视药材时，脑中会自动浮现出它们的名称和主治。）"
+    },
+    {
+      "character": "主考官",
+      "avatar": "sun_fangming_idle_serious.png",
+      "text": "基础考核结束，接下来是入堂面诊。此关将决定你们是否有资格进入太医署！"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_nervous.png",
+      "text": "（面诊…这是最关键的一环了。希望能顺利通过。）"
     }
   ],
   "game": {
-    "medicineTypes": 5,
+    "medicineTypes": 4,
     "rows": 3,
     "cols": 3,
-    "operationCount": 1
-  }
+    "operationCount": 3
+  },
+  "post_game_dialogues": [
+    {
+      "character": "主考官",
+      "avatar": "sun_fangming_idle_serious.png",
+      "background": "bg_examine",
+      "text": "此人突发腹痛，呕吐不止，泻下秽物，口干唇燥，脉象沉细数。你且诊治，并说出方剂。"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_nervous.png",
+      "sfx": "sfx_pulse_take.mp3",
+      "text": "（症状与霍乱相似，但似乎又有细微差别…）就在我凝神思索时，怀中的《神农残卷》微微发热，窥天镜也轻颤了一下！"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_nervous.png",
+      "text": "（眼前景象微变，我看到病人腹部笼罩着一层淡黑气，其中还有一丝奇异的紫色光点…这是…瘴毒！）"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_idle.png",
+      "text": "禀考官，此症看似霍乱，实则兼有山岚瘴气入体。当以‘藿香正气散’为主方，并加‘犀角’清热解毒，若无犀角，可以‘升麻’与‘青黛’代之。"
+    },
+    {
+      "character": "孙方明",
+      "avatar": "sun_fangming_approving_talking.png",
+      "text": "哦？你如何确定其兼有瘴毒？此非经验老道者，极易疏忽。"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_idle.png",
+      "text": "学生观其面色，虽黄而隐隐透紫，呕吐物中带有一丝寻常霍乱所无的腥臭之气，故有此判断。"
+    },
+    {
+      "character": "孙方明",
+      "avatar": "sun_fangming_approving_talking.png",
+      "text": "哈哈，好！小小年纪，见地不凡！老夫孙方明，忝为太医署博士。你对犀角的替代之法，与我先祖孙思邈的思路不谋而合。恭喜你，你通过了！"
+    }
+  ]
 }

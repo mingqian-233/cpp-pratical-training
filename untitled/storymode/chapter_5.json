@@ -1,28 +1,88 @@
 {
-  "title": "5",
-  "background": "bg_story1",
-  "dialogues": [
+  "title": "第五章：灭世",
+  "background": "bg_danfang_inside",
+  "pre_game_dialogues": [
     {
-      "character": "李师傅",
-      "avatar": "i_nervous.png",
-      "text": "孩子，你已经跟着我学了三个月了，今天我要考考你对药材的认识。"
+      "character": "（画外音）",
+      "avatar": null,
+      "music": "BGM_Chapter5.mp3",
+      "text": "血案之后数日，一纸调令将我从太医署调往宫中一处偏僻的丹房，理由是协助炼制‘延年益寿’的丹药。"
     },
     {
-      "character": "主角",
-      "avatar": "i_smile.png",
-      "text": "师傅，我一定不会让您失望的！"
+      "character": "魏进忠",
+      "avatar": "wei_jinzhong_idle_gloomy.png",
+      "text": "常医官，咱家魏进忠。你分内的事便是看管火候，研磨药材。这可是为了圣上的龙体安康，马虎不得。"
     },
     {
-      "character": "李师傅",
-      "avatar": "i_surprise.png",
-      "text": "接下来要认真了！",
-      "music": "challenge.mp3"
+      "character": "常安",
+      "avatar": "changan_nervous.png",
+      "text": "（渐渐地，我发现他交给我处理的药材越来越古怪，其中不乏剧毒之物，散发着令人不安的气息…这绝非寻常丹药。）"
+    },
+    {
+      "character": "（画外音）",
+      "avatar": null,
+      "background": "bg_danfang_inside_change",
+      "text": "就在这时，异变陡生！药柜抽屉无故自行开合，药材上浮现出层层血色蒸汽，丹炉的火焰也变成了诡异的绿色！"
+    },
+    {
+      "character": "奶龙",
+      "avatar": "nailong_dark_idle.png",
+      "text": "（一个冰冷戏谑的声音在我脑中响起）常安啊常安，我的好伙伴，别再白费力气了。乖乖听话，帮我把这‘神仙酿’炼制出来吧。"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_angry.png",
+      "text": "奶龙？！你…你的眼睛怎么…！"
+    },
+    {
+      "character": "奶龙",
+      "avatar": "nailong_dark_angry_powerful.png",
+      "sfx": "sfx_nailong_dark_power_surge.mp3",
+      "text": "没错，就是我。你以为祥瑞之气、大人物都是真的吗？那不过是引诱你的诱饵！"
+    },
+    {
+      "character": "魏进忠",
+      "avatar": "wei_jinzhong_obsequious.png",
+      "text": "（魏进忠不知何时走到奶龙身边，恭敬地低下头）恭迎神尊。"
+    },
+    {
+      "character": "奶龙",
+      "avatar": "nailong_dark_angry_powerful.png",
+      "text": "别做无谓的反抗了。现在，乖乖帮我完成最后的步骤！"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_surprised.png",
+      "text": "（一股强大的精神威压将我笼罩，我的身体完全不受控制！我的手…开始按照它的指示，将那些剧毒之物投入丹炉！）"
     }
   ],
   "game": {
-    "medicineTypes": 2,
-    "rows": 2,
-    "cols": 2,
-    "operationCount": 1
-  }
+    "medicineTypes": 9,
+    "rows": 4,
+    "cols": 4,
+    "operationCount": 5
+  },
+  "post_game_dialogues": [
+    {
+      "character": "（画外音）",
+      "avatar": null,
+      "background": "bg_danfang_inside_poison",
+      "text": "随着最后一份药材投入，丹炉发出一声巨响，浓郁的、带着甜腥味的红雾喷涌而出，迅速弥漫了整个丹房。"
+    },
+    {
+      "character": "奶龙",
+      "avatar": "nailong_dark_crazy_laugh.png",
+      "text": "成功了！哈哈哈哈！我的‘灭世神药’终于炼成了！"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_angry.png",
+      "text": "（身体的控制权被释放，我瘫倒在地）你为什么要这样做？！你不是说要和我共创大业吗！"
+    },
+    {
+      "character": "奶龙",
+      "avatar": "nailong_dark_angry_powerful.png",
+      "text": "剧毒？哈哈哈！对那些愚昧的凡人来说，或许是吧。但对我而言，这是净化世界的甘露！很快，整个华夏大陆都将沐浴在它的‘恩泽’之下！"
+    }
+  ]
 }

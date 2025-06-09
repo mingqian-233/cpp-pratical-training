@@ -1,12 +1,12 @@
-
 # 设置项目名称和版本
 TARGET = project1
 TEMPLATE = app
 VERSION = 0.1
 
-# 设置 Qt 使用的模块
-QT += core gui widgets multimedia
 
+# 设置 Qt 使用的模块
+QT += core gui widgets multimedia multimediawidgets
+RC_ICONS = nailong.ico
 
 # 源文件列表（所有 .cpp 文件）
 SOURCES += main.cpp \
@@ -47,8 +47,8 @@ CONFIG += c++17
 INCLUDEPATH += .
 DEPENDPATH += .
 
-# 启用调试模式
-CONFIG += debug
+# 设置默认为 Release 模式
+CONFIG += release
 
 # 自动处理 .ui 文件
 AUTOMOC = true

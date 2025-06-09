@@ -2,113 +2,116 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QPushButton>
-#include <QVBoxLayout>
-#include "backgroundwidget.h"
-#include "savemanager.h"
 #include <QStackedWidget>
-#include "medicinegame.h"
-#include "medicinedrawer.h"
-#include <QListWidget>
-#include <QGroupBox>
-#include <QPushButton>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QPushButton>
+#include <QLabel>
+#include <QTimer>
 #include <QMessageBox>
-#include <QApplication>
-#include "qtimer.h"
-#include "setting.h"
-#include "saveselectiondialog.h"
-#include "storymode.h"
-#include "savemanager.h"
-#include <qspinbox.h>
-#include <QScrollArea>
+#include <QDialog>
+#include <QInputDialog>
+#include <QDir>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QFile>
+#include <QRegularExpression>
+#include <QDateTime>
+#include <QListWidget>
 #include <QSpinBox>
 #include <QComboBox>
-#include <QListWidget>
-#include <QMap>
-#include <QVector>
+#include <QGroupBox>
 #include <QGridLayout>
-#include <QDebug>
-#include <QFile>
-#include <QTextStream>
-#include <QtMath>
-#include <QFileDialog>
+#include <QScreen>
+#include <QGuiApplication>
+
+// 动画相关头文件
+#include <QPropertyAnimation>
+#include <QGraphicsOpacityEffect>
+#include <QParallelAnimationGroup>
+#include <QSequentialAnimationGroup>
+#include <QEasingCurve>
+#include <QGraphicsDropShadowEffect>
+
+#include "backgroundwidget.h"
+#include "saveselectiondialog.h"
+#include "savemanager.h"
+#include "storymode.h"
+#include "medicinegame.h"
+#include "musicmanager.h"
 
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
+protected:
+    void resizeEvent(QResizeEvent *event) override;
 
 public:
-    // 获取单例实例
     static MainWindow* instance();
     ~MainWindow();
 
-public:
     void switchToMainPage();
+    void showBlackScreen();
+private:
+    void cleanupGamePages();  // 新增方法
 
 private slots:
     void showSaveSelectDialog();
-
-private:
-    SaveManager* m_saveManager;
-
-private slots:
     void onStoryModeClicked();
     void onChallengeModeClicked();
     void onCustomModeClicked();
+    void onGameRulesClicked();
     void onSettingsClicked();
     void onExitClicked();
 
 private:
-    // 私有构造函数（单例模式）
     explicit MainWindow(QWidget *parent = nullptr);
     static MainWindow* m_instance;
 
             // UI组件
+    QStackedWidget* m_stackedWidget;
     QWidget* m_centralWidget;
     BackgroundWidget* m_backgroundWidget;
     QVBoxLayout* m_mainLayout;
 
-    // 按钮
+            // 按钮
     QPushButton* m_storyModeBtn;
     QPushButton* m_challengeModeBtn;
     QPushButton* m_customModeBtn;
+    QPushButton* m_gameRulesBtn;
     QPushButton* m_settingsBtn;
     QPushButton* m_exitBtn;
 
+            // 动画相关组件
+    QWidget* m_blackScreenWidget;       // 黑屏widget
+    QWidget* m_logoWidget;              // logo显示widget
+    QLabel* m_titleWidget;              // 游戏标题widget
+    QGraphicsOpacityEffect* m_titleOpacity; // 标题透明度效果
+    QList<QGraphicsOpacityEffect*> m_buttonOpacities; // 按钮透明度效果列表
+    bool m_animationCompleted;          // 动画完成标志
 
-            // UI初始化函数
+            // 存档管理
+    SaveManager* m_saveManager;
+
+            // 私有方法
     void setupUI();
-
-    // 创建菜单按钮的辅助函数
     QPushButton* createMenuButton(const QString& text);
-
-//挑战模式
-private:
-    // 添加QStackedWidget和ChallengeMode
-    QStackedWidget* m_stackedWidget;
-    QWidget* m_mainPage;  // 用于存放原有的主界面内容
-signals:
-    void gameCompleted();  // 游戏完成信号
-
-private:
-    void startChallengeLevel(int level);  // 启动挑战关卡
-
+    void loadChapter(int chapterNumber);
+    void startChallengeLevel(int level);
     void createCustomLevel();
     void setupCustomDrawers(int rows, int cols, const QStringList& medicines);
     void loadCustomLevel();
     void startCustomGame(const QString& filePath);
     void designCustomGame(const QString& filePath);
-    void loadChapter(int chapterNumber);
 
-private:
-
-    QPushButton* m_gameRulesBtn;  // 游戏规则按钮
-
-private slots:
-
-    void onGameRulesClicked();  // 游戏规则按钮点击事件处理函数
-
+            // 动画相关方法
+    void startIntroAnimation();
+    void showLogoAnimation();
+    void showMainWindowAnimation();
+    void createTitleWidget();
+    void setupInitialState();
+    void startMainWindowAnimations();
 };
 
 #endif // MAINWINDOW_H

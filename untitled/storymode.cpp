@@ -1,5 +1,6 @@
 #include "storymode.h"
 #include "musicmanager.h"
+#include "qapplication.h"
 #include "setting.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -15,7 +16,11 @@
 #include "spacetimevortexanimation.h"
 
 
-StoryMode::StoryMode(QWidget *parent) : QWidget(parent), m_currentDialogue(0)
+StoryMode::StoryMode(QWidget *parent) : QWidget(parent),
+                                        m_isAnimationPlaying(false),
+                                        m_currentPhase(StoryPhase::PreGame),  // 新增
+                                        m_currentDialogues(&m_preGameDialogues),
+                                        m_currentDialogue(0)// 新增
 {
     setupUI();
 }
@@ -143,13 +148,12 @@ bool StoryMode::loadChapter(int chapter)
     m_currentChapterNumber = chapter;
     qDebug()<<"m_currentChapterNumber："<<m_currentChapterNumber;
 
-    // 重置状态
-
+            // 重置状态
     m_currentDialogue = 0;
-    m_dialogues.clear();
+    m_currentPhase = StoryPhase::PreGame;
 
             // 加载章节文件
-    if (!loadChapterFile(chapter)) { // loadChapterFile 现在是通用加载
+    if (!loadChapterFile(chapter)) {
         return false;
     }
 
@@ -157,8 +161,7 @@ bool StoryMode::loadChapter(int chapter)
     m_backgroundWidget->setBackground(m_background);
 
             // 使用新的章节过渡效果
-    m_chapterTransition->resize(size()); // 确保尺寸正确
-    // 延迟 0.5 秒再开始过渡动画
+    m_chapterTransition->resize(size());
     QTimer::singleShot(500, this, [this]() {
         m_chapterTransition->showChapter(m_chapterTitle);
     });
@@ -170,47 +173,14 @@ void StoryMode::onChapterTransitionFinished()
         // 章节过渡效果完成后，显示第一个对话
         showCurrentDialogue();
     }
-void StoryMode::resizeEvent(QResizeEvent *event)
-    {
-        QWidget::resizeEvent(event);
 
-                // 保持 ChapterTransition 大小
-        if (m_chapterTransition) {
-            m_chapterTransition->resize(size());
-        }
-
-                // 重新定位设置按钮
-        if (m_settingsButton) {
-            m_settingsButton->move(width()-100-20, 20);
-        }
-
-                // —— 新增：如果当前对话框和头像都在显示，则重置头像位置 ——
-        if (m_dialogueBox->isVisible() && m_avatarLabel->isVisible()) {
-            // 强制布局更新，确保 m_dialogueBox 的 geometry 是最新的
-            m_dialogueBox->layout()->activate();
-
-                    // 计算可用空间
-            int leftMargin      = 20;
-            int avatarBottom    = m_dialogueBox->y();
-            int topPosition     = avatarBottom - m_avatarLabel->height();
-            topPosition         = qMax(10, topPosition);
-
-                    // 限制横向不超出左侧边界
-            int maxX = width() - m_avatarLabel->width() - 10;
-            int x     = qMin(leftMargin, maxX);
-
-            m_avatarLabel->setParent(this);
-            m_avatarLabel->move(x, topPosition);
-            m_avatarLabel->raise();
-        }
-    }
 bool StoryMode::loadChapterFile(int chapter)
 {
     QString fileName = QString("chapter_%1.json").arg(chapter);
     QByteArray data;
     bool fileLoaded = false;
 
-    // 首先尝试从资源文件加载
+            // 首先尝试从资源文件加载
     QString qrcPath = QString(":/storymode/%1").arg(fileName);
     QFile qrcFile(qrcPath);
 
@@ -227,46 +197,86 @@ bool StoryMode::loadChapterFile(int chapter)
         return false;
     }
 
-    // 解析JSON数据
+            // 解析JSON数据
     QJsonDocument doc = QJsonDocument::fromJson(data);
     QJsonObject chapterData = doc.object();
 
-    // 解析章节数据
+            // 解析章节数据
     m_chapterTitle = chapterData["title"].toString();
     m_background = chapterData["background"].toString();
 
-    // 解析对话数据
-    QJsonArray dialoguesArray = chapterData["dialogues"].toArray();
-    for (int i = 0; i < dialoguesArray.size(); i++) {
-        QJsonObject dialogueObj = dialoguesArray[i].toObject();
+            // 清空之前的对话数据
+    m_preGameDialogues.clear();
+    m_postGameDialogues.clear();
+    m_dialogues.clear(); // 保留兼容性
 
-        DialogueData dialogue;
-        dialogue.character = dialogueObj["character"].toString();
-        dialogue.avatar = dialogueObj["avatar"].toString();
-        dialogue.text = dialogueObj["text"].toString();
-        dialogue.music = dialogueObj["music"].toString();  // 解析音乐字段
-        dialogue.background = dialogueObj["background"].toString(); // 解析背景字段
+            // 解析游戏前对话数据
+    if (chapterData.contains("pre_game_dialogues")) {
+        QJsonArray preDialoguesArray = chapterData["pre_game_dialogues"].toArray();
+        for (int i = 0; i < preDialoguesArray.size(); i++) {
+            QJsonObject dialogueObj = preDialoguesArray[i].toObject();
+            DialogueData dialogue;
+            dialogue.character = dialogueObj["character"].toString();
+            dialogue.avatar = dialogueObj["avatar"].toString();
+            dialogue.text = dialogueObj["text"].toString();
+            dialogue.music = dialogueObj["music"].toString();
+            dialogue.background = dialogueObj["background"].toString();
+            dialogue.sfx = dialogueObj["sfx"].toString();
 
-        m_dialogues.append(dialogue);
+            m_preGameDialogues.append(dialogue);
+        }
     }
 
-    // 解析游戏参数
+            // 解析游戏后对话数据
+    if (chapterData.contains("post_game_dialogues")) {
+        QJsonArray postDialoguesArray = chapterData["post_game_dialogues"].toArray();
+        for (int i = 0; i < postDialoguesArray.size(); i++) {
+            QJsonObject dialogueObj = postDialoguesArray[i].toObject();
+            DialogueData dialogue;
+            dialogue.character = dialogueObj["character"].toString();
+            dialogue.avatar = dialogueObj["avatar"].toString();
+            dialogue.text = dialogueObj["text"].toString();
+            dialogue.music = dialogueObj["music"].toString();
+            dialogue.sfx = dialogueObj["sfx"].toString();
+            dialogue.background = dialogueObj["background"].toString();
+            m_postGameDialogues.append(dialogue);
+        }
+    }
+
+            // 解析游戏参数
     m_gameParams = chapterData["game"].toObject();
+
+            // 设置初始状态
+    m_currentPhase = StoryPhase::PreGame;
+    m_currentDialogues = &m_preGameDialogues;
+    m_currentDialogue = 0;
 
     return true;
 }
 
 void StoryMode::showCurrentDialogue()
 {
-
-    if (m_currentDialogue >= m_dialogues.size()) {
-        // 所有对话已完成，准备开始游戏
-        emit storyCompleted(m_gameParams);
-        return;
+    // 检查当前对话数组是否为空或越界
+    if (!m_currentDialogues || m_currentDialogue >= m_currentDialogues->size()) {
+        // 当前阶段的对话已完成
+        if (m_currentPhase == StoryPhase::PreGame) {
+            // 游戏前对话完成，准备开始游戏
+            m_currentPhase = StoryPhase::Gaming;
+            m_dialogueBox->hide();
+            m_avatarLabel->hide();
+            emit storyCompleted(m_gameParams);
+            return;
+        } else if (m_currentPhase == StoryPhase::PostGame) {
+            // 游戏后对话完成，章节彻底结束
+            m_dialogueBox->hide();
+            m_avatarLabel->hide();
+            emit chapterCompleted(); // 新增信号，表示整个章节完成
+            return;
+        }
     }
 
             // 获取当前对话
-    const DialogueData& dialogue = m_dialogues[m_currentDialogue];
+    const DialogueData& dialogue = (*m_currentDialogues)[m_currentDialogue];
 
             // 设置对话内容
     m_characterLabel->setText(dialogue.character);
@@ -276,83 +286,62 @@ void StoryMode::showCurrentDialogue()
     if (!dialogue.music.isEmpty()) {
         MusicManager::instance()->switchMusic(dialogue.music);
     }
+    if (!dialogue.sfx.isEmpty()) {
+        MusicManager::instance()->playEffect(dialogue.sfx);
+    }
     // 如果有指定背景且不为空，则切换背景
     if (!dialogue.background.isEmpty()) {
         m_backgroundWidget->setBackground(dialogue.background);
     }
 
-            // 先显示对话框 - 这是关键修改，先显示对话框，让它正确定位
+            // 先显示对话框
     m_dialogueBox->show();
 
-    // 使用QTimer::singleShot确保对话框布局完成后再设置头像位置
-    QTimer::singleShot(0, this, [this, dialogue]() {
-        // 设置头像
-        QPixmap avatar(QString(":/images/%1").arg(dialogue.avatar));
+    // 强制更新布局，确保对话框尺寸正确
+    m_dialogueBox->updateGeometry();
+    m_dialogueBox->layout()->activate();
+    QApplication::processEvents(); // 确保布局完全更新
 
-        // 输出调试信息
-        qDebug() << "头像路径:" << QString(":/images/%1").arg(dialogue.avatar);
-        qDebug() << "对话框位置:" << m_dialogueBox->geometry();
+            // 设置头像
+    QPixmap avatar(QString(":/images/%1").arg(dialogue.avatar));
 
-                // 确保头像显示在对话框上方的左侧，且完整可见
-                // 获取可用空间尺寸
-        int availableHeight = m_dialogueBox->y(); // 对话框上方可用高度
-        int availableWidth = width() / 3; // 限制宽度为屏幕的1/3
+    int availableHeight = m_dialogueBox->y();
+    int availableWidth = width() / 3;
 
+    m_avatarLabel->setText("");
 
-            qDebug() << "头像图片加载成功，大小:" << avatar.size();
-            m_avatarLabel->setText("");
+    QSize originalSize = avatar.size();
+    QSize targetSize;
 
-                    // 计算合适的尺寸，确保完整显示
-            QSize originalSize = avatar.size();
-            QSize targetSize;
+    if (originalSize.height() > availableHeight || originalSize.width() > availableWidth) {
+        targetSize = originalSize.scaled(availableWidth, availableHeight, Qt::KeepAspectRatio);
+    } else {
+        targetSize = originalSize.scaled(qMin(originalSize.width(), availableWidth),
+                                         qMin(originalSize.height(), availableHeight),
+                                         Qt::KeepAspectRatio);
+    }
 
-                    // 根据原始尺寸计算合适的缩放比例
-            if (originalSize.height() > availableHeight || originalSize.width() > availableWidth) {
-                // 需要缩小
-                targetSize = originalSize.scaled(availableWidth, availableHeight, Qt::KeepAspectRatio);
-            } else {
-                // 可以直接使用原始尺寸或适当放大
-                targetSize = originalSize.scaled(qMin(originalSize.width(), availableWidth),
-                                                 qMin(originalSize.height(), availableHeight),
-                                                 Qt::KeepAspectRatio);
-            }
+    m_avatarLabel->setPixmap(avatar.scaled(targetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    m_avatarLabel->setFixedSize(targetSize);
+    m_avatarLabel->setStyleSheet("background-color: transparent;");
 
-                    // 应用计算后的尺寸
-            m_avatarLabel->setPixmap(avatar.scaled(targetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-            m_avatarLabel->setFixedSize(targetSize); // 固定大小
-            m_avatarLabel->setStyleSheet("background-color: transparent;");
+            // 现在计算头像位置（此时对话框布局已经更新）
+    updateAvatarPosition();
 
-                // 设置头像位置 - 左侧贴边，底部紧贴对话框顶部
-        int leftMargin = 20;
-        // 头像底部位置等于对话框顶部位置
-        int avatarBottom = m_dialogueBox->y();
-        // 头像顶部位置 = 底部位置 - 头像高度
-        int topPosition = avatarBottom - m_avatarLabel->height();
-
-                // 确保头像不会超出顶部边界
-        topPosition = qMax(10, topPosition);
-
-        qDebug() << "最终头像位置:" << leftMargin << "," << topPosition;
-        qDebug() << "头像大小:" << m_avatarLabel->size();
-
-                // 重新设置头像的父控件和位置
-        m_avatarLabel->setParent(this);
-        m_avatarLabel->move(leftMargin, topPosition);
-        m_avatarLabel->raise();
-        m_avatarLabel->show();
-
-        // 确保整个界面都能接收鼠标点击
-        setFocus();
-    });
+    m_avatarLabel->show();
+    setFocus();
 }
 
-
-// 在StoryMode类中覆盖鼠标点击事件
 void StoryMode::mousePressEvent(QMouseEvent *event)
 {
+    // 如果动画正在播放，忽略鼠标事件
+    if (m_isAnimationPlaying) {
+        event->accept();
+        return;
+    }
+
     nextDialogue();
     event->accept();
-    // 事件已处理
 }
 
 
@@ -365,57 +354,121 @@ void StoryMode::onSettingsClicked()
 {
     Setting::instance()->show();
 }
+
+// 修改后的 nextDialogue 方法
 void StoryMode::nextDialogue()
 {
     m_currentDialogue++;
     qDebug()<<"当前对话"<<m_currentDialogue;
-    if (m_currentDialogue >= m_dialogues.size()) {
-        // 所有对话已完成，准备开始游戏
-        m_dialogueBox->hide();
-        m_avatarLabel->hide();
 
-        if (m_currentChapterNumber == 1) {
-            qDebug() << "处理第一章";
-            // 第一章结束时的特殊处理：显示ECG动画
-            m_backgroundWidget->setBackground("hospital"); // 为ECG动画设置背景
+    if (!m_currentDialogues || m_currentDialogue >= m_currentDialogues->size()) {
+        if (m_currentPhase == StoryPhase::PreGame) {
+            m_dialogueBox->hide();
+            m_avatarLabel->hide();
 
-            ECGAnimation *ecgAnimation = new ECGAnimation(this);
-            ecgAnimation->resize(this->size());
-            ecgAnimation->show();
-            ecgAnimation->raise();
+            if (m_currentChapterNumber == 1) {
+                // 设置动画播放标志，冻结鼠标操作
+                m_isAnimationPlaying = true;
 
-                    // 开始动画
-            ecgAnimation->startAnimation();
+                ECGAnimation *ecgAnimation = new ECGAnimation(this);
+                ecgAnimation->resize(this->size());
+                ecgAnimation->show();
+                ecgAnimation->raise();
+                ecgAnimation->startAnimation();
 
-                    // 连接动画完成信号
-            connect(ecgAnimation, &ECGAnimation::animationFinished, this, [this, ecgAnimation]() {
-                // 动画完成后删除心电图控件
-                ecgAnimation->deleteLater();
+                connect(ecgAnimation, &ECGAnimation::animationFinished, this, [this, ecgAnimation]() {
+                    ecgAnimation->deleteLater();
 
-                // 创建并显示时空漩涡动画
-                SpaceTimeVortexAnimation *vortexAnimation = new SpaceTimeVortexAnimation(this);
-                vortexAnimation->resize(this->size());
-                vortexAnimation->show();
-                vortexAnimation->raise();
-
-                // 开始时空漩涡动画
-                vortexAnimation->startAnimation();
-
-                // 连接时空漩涡动画完成信号
-                connect(vortexAnimation, &SpaceTimeVortexAnimation::animationFinished, this, [this, vortexAnimation]() {
-                    // 动画完成后删除时空漩涡控件
-                    vortexAnimation->deleteLater();
-                    // 此时才发出storyCompleted信号
-                    emit storyCompleted(m_gameParams);
+                    // 第一个动画完成，开始第二个动画
+                    SpaceTimeVortexAnimation *vortexAnimation = new SpaceTimeVortexAnimation(this);
+                    vortexAnimation->resize(this->size());
+                    vortexAnimation->show();
+                    vortexAnimation->raise();
+                    vortexAnimation->startAnimation();
+                    connect(vortexAnimation, &SpaceTimeVortexAnimation::animationFinished, this, [this, vortexAnimation]() {
+                        vortexAnimation->deleteLater();
+                        // 所有动画完成，恢复鼠标操作
+                        m_currentPhase = StoryPhase::Gaming;
+                        emit storyCompleted(m_gameParams);
+                    });
                 });
-            });
-        }else {
-            // 其他章节直接发出信号
-            emit storyCompleted(m_gameParams);
+            } else {
+                m_currentPhase = StoryPhase::Gaming;
+                emit storyCompleted(m_gameParams);
+            }
+            return;
+        } else if (m_currentPhase == StoryPhase::PostGame) {
+            m_dialogueBox->hide();
+            m_avatarLabel->hide();
+            emit chapterCompleted();
+            return;
         }
-        return;
-    }else {
-        // 显示下一条对话
+    } else {
         showCurrentDialogue();
+    }
+}
+void StoryMode::onGameCompleted()
+{
+    if (m_postGameDialogues.isEmpty()) {
+        // 没有游戏后对话，直接完成章节
+        emit chapterCompleted();
+        return;
+    }
+
+            // 有游戏后对话，切换到游戏后阶段
+    m_currentPhase = StoryPhase::PostGame;
+    m_currentDialogues = &m_postGameDialogues;
+    m_currentDialogue = 0;
+
+    // 显示游戏后的第一条对话
+    showCurrentDialogue();
+}
+
+// 新增方法：更新头像位置
+void StoryMode::updateAvatarPosition()
+{
+    if (!m_avatarLabel || !m_dialogueBox || !m_dialogueBox->isVisible()) {
+        return;
+    }
+
+            // 确保布局是最新的
+    m_dialogueBox->layout()->activate();
+
+    int leftMargin = 20;
+    int avatarBottom = m_dialogueBox->y();
+    int topPosition = avatarBottom - m_avatarLabel->height();
+    topPosition = qMax(10, topPosition);
+
+            // 限制横向不超出边界
+    int maxX = width() - m_avatarLabel->width() - 10;
+    int x = qMin(leftMargin, maxX);
+
+    m_avatarLabel->setParent(this);
+    m_avatarLabel->move(x, topPosition);
+    m_avatarLabel->raise();
+}
+
+// 修改 resizeEvent 方法:
+void StoryMode::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+
+            // 保持 ChapterTransition 大小
+    if (m_chapterTransition) {
+        m_chapterTransition->resize(size());
+    }
+
+            // 重新定位设置按钮
+    if (m_settingsButton) {
+        m_settingsButton->move(width()-100-20, 20);
+    }
+
+            // 如果当前对话框和头像都在显示，则重新计算头像位置
+    if (m_dialogueBox && m_dialogueBox->isVisible() &&
+        m_avatarLabel && m_avatarLabel->isVisible()) {
+        // 使用延迟更新，确保窗口大小调整完成
+        QTimer::singleShot(0, this, [this]() {
+            updateAvatarPosition();
+        });
     }
 }

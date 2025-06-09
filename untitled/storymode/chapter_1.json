@@ -1,30 +1,38 @@
 {
-  "title": "awsl",
+  "title": "第一章：猝死",
   "background": "bg_bedroom",
-  "dialogues": [
+  "pre_game_dialogues": [
     {
-      "character": "主角",
-      "avatar": "chang_an_modern_stressed.png",
-      "music": "ch01.mp3",
-      "text": "这是一个测试动画"
+      "character": "常安",
+      "avatar": "changan_modern_stressed.png",
+      "music": "BGM_Chapter1_home.mp3",
+      "sfx": "sfx_typing_keyboard.mp3",
+      "text": "我叫常安，是一名来自21世纪的985高校的软件工程专业学生。本来眼看着有大好前途……"
     },
     {
-      "character": "主角",
-      "avatar": "chang_an_modern_stressed.png",
-      "text": "测试什么呢？"
+      "character": "常安",
+      "avatar": "changan_modern_stressed.png",
+      "text": "C++实训课程的项目，名企的Offer，父母的期待…这些都化作了屏幕上不断跳动的光标，压得我喘不过气。今晚，是最后的期限。"
     },
     {
-      "character": "主角",
-      "avatar": "chang_an_modern_stressed.png",
-      "text": "啊，我死了",
-      "music": "hospital.mp3",
-      "background":"bg_hospital"
+      "character": "常安",
+      "avatar": "changan_modern_stressed.png",
+      "text": "就差这个算法了… `void dijkstra(Graph G, int startNode)`…可恶，为什么这个找不到最短路？？？"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_modern_dying.png",
+      "sfx": "sfx_body_fall_thud.mp3",
+      "text": "突然，一阵剧痛从胸口炸开，瞬间蔓延至四肢百骸。我感觉到自己向后倒去，滑落在冰冷的地板上。"
+    },
+    {
+      "character": "（画外音）",
+      "avatar": null,
+      "music": "BGM_Chapter1_hospital.mp3",
+      "background": "bg_hospital",
+      "text": "常安被舍友拖到了医院。医生说，常安的情况不太好……"
     }
   ],
-  "game": {
-    "medicineTypes": 2,
-    "rows": 2,
-    "cols": 2,
-    "operationCount": 1
-  }
+  "game": null,
+  "post_game_dialogues": []
 }

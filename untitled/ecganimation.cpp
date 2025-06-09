@@ -1,14 +1,15 @@
-// ecganimation.cpp
 #include "ecganimation.h"
-#include <QPainter>
 #include <QDateTime>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QGraphicsDropShadowEffect>
 #include <QtMath>
 #include <QRandomGenerator>
 #include <QPushButton>
-#include "musicmanager.h"
+#include <QFileInfo>
+#include <QDir>
+#include <QApplication>
+#include <QMediaMetaData>
+// #include "musicmanager.h" // 如果没有此文件请注释掉
 
 ECGAnimation::ECGAnimation(QWidget *parent)
     : QWidget(parent),
@@ -17,137 +18,147 @@ ECGAnimation::ECGAnimation(QWidget *parent)
       m_heartRate(80.0),
       m_spO2(98.0),
       m_bloodPressure(120.0),
-      m_gridSize(10),
-      m_currentPhase(0)
+      m_currentPhase(0),
+      m_isFlatlined(false),
+      m_videoPath("qrc:/video/ecg.mp4"),
+      m_normalStart(0),          // 0秒
+      m_normalEnd(5000),         // 5秒 (毫秒)
+      m_abnormalStart(5000),     // 5秒
+      m_abnormalEnd(10000),      // 10秒
+      m_deathStart(10000),       // 10秒
+      m_deathEnd(16000)          // 16秒
 {
     setupUI();
+    setupVideo();
     setupAnimation();
 
-    m_updateTimer = new QTimer(this);
-    connect(m_updateTimer, &QTimer::timeout, this, &ECGAnimation::updateWaveform);
-    m_updateTimer->setInterval(50);
-
+            // 显示信息更新定时器
     m_displayTimer = new QTimer(this);
     connect(m_displayTimer, &QTimer::timeout, this, &ECGAnimation::updateDisplay);
     m_displayTimer->setInterval(1000);
 
-    // 心跳音效计时器
+            // 心跳触发定时器
     m_heartbeatTimer = new QTimer(this);
-    connect(m_heartbeatTimer, &QTimer::timeout, this, &ECGAnimation::playHeartbeatSound);
-
+    connect(m_heartbeatTimer, &QTimer::timeout, this, &ECGAnimation::triggerHeartbeat);
 }
 
 ECGAnimation::~ECGAnimation()
 {
-    m_updateTimer->stop();
-    m_displayTimer->stop();
+    if (m_displayTimer) m_displayTimer->stop();
+    if (m_heartbeatTimer) m_heartbeatTimer->stop();
+    if (m_mediaPlayer) {
+        m_mediaPlayer->stop();
+        delete m_mediaPlayer;
+    }
+    if (m_audioOutput) {
+        delete m_audioOutput;
+    }
     delete m_mainAnimation;
 }
 
 void ECGAnimation::setupUI()
 {
-    // 设置黑色背景
     setStyleSheet("background-color: black;");
-
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(20, 20, 20, 20);
 
-    // 创建顶部信息面板
+            // 顶部信息栏
     QHBoxLayout *infoLayout = new QHBoxLayout();
-
     m_heartRateLabel = new QLabel("HR: 80", this);
-    m_heartRateLabel->setStyleSheet("color: #00FF00; font-size: 24px; font-weight: bold;");
-
+    m_heartRateLabel->setStyleSheet("color: #00FF00; font-size: 24px; font-weight: bold; font-family: 'Courier New';");
     m_spO2Label = new QLabel("SpO₂: 98%", this);
-    m_spO2Label->setStyleSheet("color: #00FFFF; font-size: 24px; font-weight: bold;");
-
+    m_spO2Label->setStyleSheet("color: #00FFFF; font-size: 24px; font-weight: bold; font-family: 'Courier New';");
     m_bpLabel = new QLabel("BP: 120/80", this);
-    m_bpLabel->setStyleSheet("color: #FF8800; font-size: 24px; font-weight: bold;");
-
+    m_bpLabel->setStyleSheet("color: #FF8800; font-size: 24px; font-weight: bold; font-family: 'Courier New';");
     m_timeLabel = new QLabel(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"), this);
-    m_timeLabel->setStyleSheet("color: white; font-size: 24px;");
+    m_timeLabel->setStyleSheet("color: white; font-size: 24px; font-family: 'Courier New';");
 
     infoLayout->addWidget(m_heartRateLabel);
     infoLayout->addWidget(m_spO2Label);
     infoLayout->addWidget(m_bpLabel);
     infoLayout->addStretch();
     infoLayout->addWidget(m_timeLabel);
-
     mainLayout->addLayout(infoLayout);
 
-    // 创建心电图视图
-    m_view = new QGraphicsView(this);
-    m_view->setStyleSheet("background-color: black; border: 1px solid #333333;");
-    m_view->setRenderHint(QPainter::Antialiasing);
-    m_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            // 视频播放区域
+    m_videoWidget = new QVideoWidget(this);
+    m_videoWidget->setStyleSheet("background-color: #001100; border: 2px solid #333333; border-radius: 5px;");
+    m_videoWidget->setFixedSize(800, 400);
 
-    m_scene = new QGraphicsScene(this);
-    m_view->setScene(m_scene);
+    mainLayout->addWidget(m_videoWidget);
+    mainLayout->setAlignment(m_videoWidget, Qt::AlignCenter);
 
-    // 添加网格
-    QPen gridPen(QColor(0, 80, 0, 100));
-    gridPen.setWidth(1);
-
-    int width = 800;
-    int height = 400;
-
-    for (int x = 0; x <= width; x += m_gridSize) {
-        m_scene->addLine(x, 0, x, height, gridPen);
-    }
-
-    for (int y = 0; y <= height; y += m_gridSize) {
-        m_scene->addLine(0, y, width, y, gridPen);
-    }
-
-    // 每隔5个小格加粗
-    QPen mainGridPen(QColor(0, 120, 0, 150));
-    mainGridPen.setWidth(2);
-
-    for (int x = 0; x <= width; x += m_gridSize * 5) {
-        m_scene->addLine(x, 0, x, height, mainGridPen);
-    }
-
-    for (int y = 0; y <= height; y += m_gridSize * 5) {
-        m_scene->addLine(0, y, width, y, mainGridPen);
-    }
-
-    // 创建ECG路径
-    QPen ecgPen(QColor(0, 255, 0));
-    ecgPen.setWidth(3);
-
-    m_ecgPath = new QGraphicsPathItem();
-    m_ecgPath->setPen(ecgPen);
-    m_scene->addItem(m_ecgPath);
-
-    m_view->setFixedSize(width + 2, height + 2);
-    m_scene->setSceneRect(0, 0, width, height);
-
-    mainLayout->addWidget(m_view);
-    mainLayout->setAlignment(m_view, Qt::AlignCenter);
-
-    // 底部信息
-    QLabel *deviceInfoLabel = new QLabel("医疗监护系统 v2.0 | 重症监护室 | 病床号: 713", this);
-    deviceInfoLabel->setStyleSheet("color: #888888; font-size: 18px;");
+            // 底部信息
+    QLabel *deviceInfoLabel = new QLabel("医疗监护系统 v3.0 | 重症监护室 | 病床号: 713", this);
+    deviceInfoLabel->setStyleSheet("color: #888888; font-size: 18px; font-family: 'Courier New';");
     deviceInfoLabel->setAlignment(Qt::AlignRight);
-
     mainLayout->addWidget(deviceInfoLabel);
 
-    // 跳过按钮
     QPushButton *skipButton = new QPushButton("跳过动画", this);
     skipButton->setStyleSheet("QPushButton { background-color: #333333; color: white; "
-        "border: 1px solid #555555; padding: 8px; border-radius: 4px; }"
+        "border: 1px solid #555555; padding: 8px; border-radius: 4px; font-family: 'Courier New'; }"
         "QPushButton:hover { background-color: #444444; }");
     connect(skipButton, &QPushButton::clicked, this, &ECGAnimation::skipAnimation);
-
     mainLayout->addWidget(skipButton, 0, Qt::AlignRight);
+}
+void ECGAnimation::setupVideo()
+{
+    m_mediaPlayer = new QMediaPlayer(this);
+    m_audioOutput = new QAudioOutput(this);
+    m_mediaPlayer->setAudioOutput(m_audioOutput);
+    m_mediaPlayer->setVideoOutput(m_videoWidget);
+
+
+    // 📊 详细调试 - 找出具体问题
+    QString videoPath = "qrc:/video/ecg.mp4";
+
+    qDebug() << "🎬 视频调试开始";
+    qDebug() << "视频路径:" << videoPath;
+
+    // 检查资源是否存在
+    QFile resourceFile(videoPath);
+    if (resourceFile.exists()) {
+        qDebug() << "✅ 资源文件存在，大小:" << resourceFile.size() << "字节";
+    } else {
+        qWarning() << "❌ 资源文件不存在!";
+
+        // 列出所有可用资源
+        QDir resourceDir(":/");
+        qDebug() << "可用资源根目录:" << resourceDir.entryList();
+
+        QDir videoDir(":/video");
+        qDebug() << "video 目录内容:" << videoDir.entryList();
+    }
+
+    // 设置视频源（完全按照音频的方式）
+    m_mediaPlayer->setSource(QUrl(videoPath));
+
+    // 详细错误监控
+    connect(m_mediaPlayer, &QMediaPlayer::errorOccurred, this,
+            [](QMediaPlayer::Error error, const QString &errorString) {
+                qWarning() << "❌ 视频播放错误:" << error << errorString;
+            });
+
+    connect(m_mediaPlayer, &QMediaPlayer::mediaStatusChanged, this,
+            [this](QMediaPlayer::MediaStatus status) {
+                qDebug() << "视频状态:" << status;
+                if (status == QMediaPlayer::LoadedMedia) {
+                    qDebug() << "✅ 视频加载成功，时长:" << m_mediaPlayer->duration() << "ms";
+                } else if (status == QMediaPlayer::InvalidMedia) {
+                    qWarning() << "❌ 视频无效!";
+                }
+            });
+
+    // 测试：立即播放看看效果
+    m_mediaPlayer->play();
+
 }
 
 void ECGAnimation::setupAnimation()
 {
     m_mainAnimation = new QSequentialAnimationGroup(this);
 
-            // 第一阶段：正常心跳，逐步加快
+            // 第一阶段：正常状态 (0-5s视频段)
     QPropertyAnimation *phase1Heart = new QPropertyAnimation(this, "heartRate");
     phase1Heart->setDuration(5000);
     phase1Heart->setStartValue(75.0);
@@ -175,26 +186,25 @@ void ECGAnimation::setupAnimation()
     phase1->addAnimation(phase1SpO2);
     phase1->addAnimation(phase1BP);
 
-            // 第二阶段：警告状态，心跳更快，波形更不规则
+            // 第二阶段：异常状态 (5-10s视频段)
     QPropertyAnimation *phase2Heart = new QPropertyAnimation(this, "heartRate");
-    phase2Heart->setDuration(3000);
+    phase2Heart->setDuration(5000);
     phase2Heart->setStartValue(120.0);
     phase2Heart->setEndValue(180.0);
     phase2Heart->setEasingCurve(QEasingCurve::InCubic);
 
     QPropertyAnimation *phase2Amp = new QPropertyAnimation(this, "amplitude");
-    phase2Amp->setDuration(3000);
+    phase2Amp->setDuration(5000);
     phase2Amp->setStartValue(1.2);
     phase2Amp->setEndValue(1.6);
-    phase2Amp->setEasingCurve(QEasingCurve::InOutQuad);
 
     QPropertyAnimation *phase2SpO2 = new QPropertyAnimation(this, "spO2");
-    phase2SpO2->setDuration(3000);
+    phase2SpO2->setDuration(5000);
     phase2SpO2->setStartValue(95.0);
     phase2SpO2->setEndValue(80.0);
 
     QPropertyAnimation *phase2BP = new QPropertyAnimation(this, "bloodPressure");
-    phase2BP->setDuration(3000);
+    phase2BP->setDuration(5000);
     phase2BP->setStartValue(130.0);
     phase2BP->setEndValue(160.0);
 
@@ -204,26 +214,26 @@ void ECGAnimation::setupAnimation()
     phase2->addAnimation(phase2SpO2);
     phase2->addAnimation(phase2BP);
 
-            // 第三阶段：死亡
+            // 第三阶段：死亡状态 (10-16s视频段)
     QPropertyAnimation *phase3Heart = new QPropertyAnimation(this, "heartRate");
-    phase3Heart->setDuration(5000);
+    phase3Heart->setDuration(6000);  // 6秒对应10-16s的视频段
     phase3Heart->setStartValue(180.0);
     phase3Heart->setEndValue(0.0);
     phase3Heart->setEasingCurve(QEasingCurve::OutCubic);
 
     QPropertyAnimation *phase3Amp = new QPropertyAnimation(this, "amplitude");
-    phase3Amp->setDuration(5000);
+    phase3Amp->setDuration(6000);
     phase3Amp->setStartValue(1.6);
     phase3Amp->setEndValue(0.0);
     phase3Amp->setEasingCurve(QEasingCurve::OutQuad);
 
     QPropertyAnimation *phase3SpO2 = new QPropertyAnimation(this, "spO2");
-    phase3SpO2->setDuration(5000);
+    phase3SpO2->setDuration(6000);
     phase3SpO2->setStartValue(80.0);
     phase3SpO2->setEndValue(0.0);
 
     QPropertyAnimation *phase3BP = new QPropertyAnimation(this, "bloodPressure");
-    phase3BP->setDuration(5000);
+    phase3BP->setDuration(6000);
     phase3BP->setStartValue(160.0);
     phase3BP->setEndValue(0.0);
 
@@ -233,63 +243,124 @@ void ECGAnimation::setupAnimation()
     phase3->addAnimation(phase3SpO2);
     phase3->addAnimation(phase3BP);
 
-            // 添加到主动画
     m_mainAnimation->addAnimation(phase1);
     m_mainAnimation->addAnimation(phase2);
     m_mainAnimation->addAnimation(phase3);
 
-            // 监听各个阶段的变化 - 修复错误，使用stateChanged信号
-    connect(phase1, &QParallelAnimationGroup::stateChanged, this, [this](QAbstractAnimation::State newState, QAbstractAnimation::State oldState){
-        if (newState == QAbstractAnimation::Running && oldState != QAbstractAnimation::Running) {
-            m_currentPhase = 1;
-            MusicManager::instance()->playEffect("qrc:/music/ecg_normal.mp3");
+            // 阶段变化监听
+    connect(phase1, &QParallelAnimationGroup::stateChanged, this,
+            [this](QAbstractAnimation::State newState, QAbstractAnimation::State){
+                if (newState == QAbstractAnimation::Running) {
+                    m_currentPhase = 1;
+                    updateVideoForPhase();
+                    updateHeartbeatTimer();
+                }
+            });
 
-            // 根据心率设置心跳音效的间隔
-            updateHeartbeatTimer();
-        }
-    });
+    connect(phase2, &QParallelAnimationGroup::stateChanged, this,
+            [this](QAbstractAnimation::State newState, QAbstractAnimation::State){
+                if (newState == QAbstractAnimation::Running) {
+                    m_currentPhase = 2;
+                    updateVideoForPhase();
+                    updateHeartbeatTimer();
+                }
+            });
 
-    connect(phase2, &QParallelAnimationGroup::stateChanged, this, [this](QAbstractAnimation::State newState, QAbstractAnimation::State oldState){
-        if (newState == QAbstractAnimation::Running && oldState != QAbstractAnimation::Running) {
-            m_currentPhase = 2;
-            MusicManager::instance()->playEffect("qrc:/music/ecg_warning.mp3");
-
-            // 更新心跳音效的间隔
-            updateHeartbeatTimer();
-        }
-    });
-
-    connect(phase3, &QParallelAnimationGroup::stateChanged, this, [this](QAbstractAnimation::State newState, QAbstractAnimation::State oldState){
-        if (newState == QAbstractAnimation::Running && oldState != QAbstractAnimation::Running) {
-            m_currentPhase = 3;
-            MusicManager::instance()->playEffect("ecg_death.mp3");
-
-            // 停止心跳音效
-            m_heartbeatTimer->stop();
-        }
-    });
+    connect(phase3, &QParallelAnimationGroup::stateChanged, this,
+            [this](QAbstractAnimation::State newState, QAbstractAnimation::State){
+                if (newState == QAbstractAnimation::Running) {
+                    m_currentPhase = 3;
+                    updateVideoForPhase();
+                    updateHeartbeatTimer();
+                }
+            });
 
     connect(m_mainAnimation, &QSequentialAnimationGroup::finished, this, &ECGAnimation::animationFinished);
 }
 
+void ECGAnimation::updateVideoForPhase()
+{
+    if (!m_mediaPlayer) return;
+
+    qint64 startTime, endTime;
+
+    switch (m_currentPhase) {
+    case 1: // 正常期间 (0-5s)
+        startTime = m_normalStart;
+        endTime = m_normalEnd;
+        break;
+    case 2: // 异常期间 (5-10s)
+        startTime = m_abnormalStart;
+        endTime = m_abnormalEnd;
+        break;
+    case 3: // 死亡期间 (10-16s)
+        startTime = m_deathStart;
+        endTime = m_deathEnd;
+        break;
+    default:
+        startTime = m_normalStart;
+        endTime = m_normalEnd;
+        break;
+    }
+
+    // 设置播放位置到对应阶段的开始
+    m_mediaPlayer->setPosition(startTime);
+    m_mediaPlayer->play();
+}
+
+void ECGAnimation::onVideoPositionChanged(qint64 position)
+{
+    // 根据当前阶段检查是否需要循环播放
+    qint64 endTime;
+    qint64 startTime;
+
+    switch (m_currentPhase) {
+    case 1:
+        startTime = m_normalStart;
+        endTime = m_normalEnd;
+        break;
+    case 2:
+        startTime = m_abnormalStart;
+        endTime = m_abnormalEnd;
+        break;
+    case 3:
+        startTime = m_deathStart;
+        endTime = m_deathEnd;
+        break;
+    default:
+        return;
+    }
+
+    // 如果播放位置超出当前阶段范围，重新开始
+    if (position >= endTime || position < startTime) {
+        m_mediaPlayer->setPosition(startTime);
+    }
+}
 
 void ECGAnimation::startAnimation()
 {
-    m_updateTimer->start();
     m_displayTimer->start();
-    m_mainAnimation->start();
-
-    // 开始心跳声音计时器
     updateHeartbeatTimer();
     m_heartbeatTimer->start();
+
+    // 开始播放视频
+    m_currentPhase = 1;
+    updateVideoForPhase();
+
+    // 开始参数动画
+    m_mainAnimation->start();
 }
 
 void ECGAnimation::skipAnimation()
 {
     m_mainAnimation->stop();
-    m_updateTimer->stop();
     m_displayTimer->stop();
     m_heartbeatTimer->stop();
+
+    if (m_mediaPlayer) {
+        m_mediaPlayer->stop();
+    }
+
     emit animationFinished();
 }
 
@@ -299,269 +370,90 @@ void ECGAnimation::updateHeartbeatTimer()
         m_heartbeatTimer->stop();
         return;
     }
-
-    // 根据心率计算两次心跳之间的间隔(毫秒)
-    int interval = qRound(60.0 / m_heartRate * 1000);
+    int interval = qRound(60000.0 / m_heartRate);
     m_heartbeatTimer->setInterval(interval);
 }
+
+void ECGAnimation::triggerHeartbeat()
+{
+    if (m_heartRate <= 0) return;
+    playHeartbeatSound();
+}
+
 void ECGAnimation::playHeartbeatSound()
 {
-    // 根据当前阶段播放不同的心跳音效
+   // 如果有音效管理器，取消注释以下代码
+    /*
     switch (m_currentPhase) {
-    case 1:
-        MusicManager::instance()->playEffect("ecg_normal.mp3");
-        break;
-    case 2:
-        MusicManager::instance()->playEffect("ecg_warning.mp3");
-        break;
-    case 3:
-        break;
+    case 1: MusicManager::instance()->playEffect("ecg_normal.mp3"); break;
+    case 2: MusicManager::instance()->playEffect("ecg_warning.mp3"); break;
+    case 3: if (m_heartRate > 0) { MusicManager::instance()->playEffect("ecg_death.mp3"); } break;
     }
+    */
 }
 
-void ECGAnimation::updateWaveform()
-{
-    // 根据当前振幅和频率生成ECG路径
-    QPainterPath path = generateECGPath(m_amplitude, m_frequency);
-    m_ecgPath->setPath(path);
-}
-
-QPainterPath ECGAnimation::generateECGPath(qreal amplitude, qreal frequency)
-{
-    QPainterPath path;
-
-            // 心电图视图的中心线
-    int centerY = m_scene->height() / 2;
-    int width = m_scene->width();
-
-            // 基础ECG波形参数
-    qreal p_width = 20 * frequency;
-    qreal p_height = 10 * amplitude;
-    qreal q_depth = 5 * amplitude;
-    qreal qrs_width = 10 * frequency;
-    qreal r_height = 80 * amplitude;
-    qreal s_depth = 20 * amplitude;
-    qreal t_width = 25 * frequency;
-    qreal t_height = 20 * amplitude;
-
-            // 添加一些随机变化，使波形更自然
-    QRandomGenerator *rand = QRandomGenerator::global();
-
-    // 在第二阶段增加更多的波动，表示心律不齐
-    qreal noiseAmplitude = 2.0;
-    if (m_currentPhase == 2) {
-        noiseAmplitude = 5.0;
-
-        // 在警告阶段偶尔添加早搏或漏搏
-        if (rand->bounded(100) < 20) {  // 20%的概率出现异常
-            p_height += (rand->bounded(1000) / 100.0) - 5.0;
-            r_height += (rand->bounded(2000) / 100.0) - 10.0;
-        }
-    } else {
-        p_height += (rand->bounded(400) / 100.0) - 2.0;  // -2.0到2.0之间
-        r_height += (rand->bounded(1000) / 100.0) - 5.0; // -5.0到5.0之间
-    }
-
-    t_height += (rand->bounded(600) / 100.0) - 3.0;  // -3.0到3.0之间
-
-            // 如果是濒死状态（振幅接近0），则生成几乎是直线的波形
-    if (amplitude < 0.1) {
-        path.moveTo(0, centerY);
-
-        for (int x = 0; x < width; x += 2) {
-            qreal y = centerY + (rand->bounded(400) / 100.0) - 2.0;
-            path.lineTo(QPointF(x, y));
-        }
-
-        return path;
-    }
-
-            // 计算一个完整心跳的宽度
-    int beatWidth = qRound(p_width + qrs_width + t_width + 50);
-
-            // 根据心率计算两次心跳之间的间隔
-    qreal interval = 60.0 / qMax(1.0, m_heartRate) * 1000;  // 60秒/每分钟心跳数 * 1000毫秒
-    interval = qMax(interval, (qreal)beatWidth); // 确保间隔至少足够一个心跳
-
-            // 转换为像素单位
-    interval = interval / 10.0;
-
-            // 基于时间创建波形
-    QDateTime now = QDateTime::currentDateTime();
-    qint64 msecs = now.toMSecsSinceEpoch();
-
-    path.moveTo(0, centerY);
-
-            // 先添加一些基线
-    int x = 0;
-    while (x < 30) {
-        qreal y = centerY + (rand->bounded(200) / 100.0) - 1.0;
-        path.lineTo(QPointF(x, y));
-        x += 2;
-    }
-
-            // 计算将会有多少个心跳周期
-    int numBeats = qCeil(width / interval) + 1;
-
-    for (int beat = 0; beat < numBeats; beat++) {
-        int beatStart = qRound(beat * interval);
-
-                // P波
-        for (int i = 0; i < p_width; i++) {
-            if (x >= width) break;
-            qreal ratio = (qreal)i / p_width;
-            qreal y = centerY - p_height * qSin(ratio * M_PI);
-
-            // 在第2阶段添加更多噪声
-            if (m_currentPhase == 2) {
-                y += (rand->bounded(400) / 100.0) - 2.0;
-            }
-
-            path.lineTo(QPointF(x, y));
-            x += 1;
-        }
-
-                // 基线
-        for (int i = 0; i < 10; i++) {
-            if (x >= width) break;
-            qreal baselineNoise = (rand->bounded(200) / 100.0) - 1.0;
-            path.lineTo(QPointF(x, centerY + baselineNoise));
-            x += 1;
-        }
-
-                // QRS波
-                // Q波
-        if (x < width) {
-            qreal qNoise = 0;
-            if (m_currentPhase == 2) qNoise = (rand->bounded(300) / 100.0) - 1.5;
-            path.lineTo(QPointF(x, centerY + q_depth + qNoise));
-            x += 2;
-        }
-
-                // R波
-        if (x < width) {
-            qreal rNoise = 0;
-            if (m_currentPhase == 2) rNoise = (rand->bounded(1000) / 100.0) - 5.0;
-            path.lineTo(QPointF(x, centerY - r_height + rNoise));
-            x += 3;
-        }
-
-                // S波
-        if (x < width) {
-            qreal sNoise = 0;
-            if (m_currentPhase == 2) sNoise = (rand->bounded(600) / 100.0) - 3.0;
-            path.lineTo(QPointF(x, centerY + s_depth + sNoise));
-            x += 2;
-        }
-
-                // 回到基线
-        if (x < width) {
-            path.lineTo(QPointF(x, centerY));
-            x += 3;
-        }
-
-                // T波
-        for (int i = 0; i < t_width; i++) {
-            if (x >= width) break;
-            qreal ratio = (qreal)i / t_width;
-            qreal y = centerY - t_height * qSin(ratio * M_PI);
-
-            // 在第2阶段添加更多噪声
-            if (m_currentPhase == 2) {
-                y += (rand->bounded(400) / 100.0) - 2.0;
-            }
-
-            path.lineTo(QPointF(x, y));
-            x += 1;
-        }
-
-                // 剩余基线到下一个心跳周期
-        int remaining = beatStart + qRound(interval) - x;
-        for (int i = 0; i < remaining; i++) {
-            if (x >= width) break;
-            qreal y = centerY + (rand->bounded(200) / 100.0) - 1.0;
-
-            // 第2阶段增加基线漂移
-            if (m_currentPhase == 2) {
-                y += (rand->bounded(200) / 100.0) - 1.0;
-            }
-
-            path.lineTo(QPointF(x, y));
-            x += 2;
-        }
-    }
-
-    return path;
-}
 void ECGAnimation::updateDisplay()
 {
-    // 更新显示的值
     m_heartRateLabel->setText(QString("HR: %1").arg(qRound(m_heartRate)));
     m_spO2Label->setText(QString("SpO₂: %1%").arg(qRound(m_spO2)));
     m_bpLabel->setText(QString("BP: %1/80").arg(qRound(m_bloodPressure)));
     m_timeLabel->setText(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"));
 
-            // 根据当前阶段更新颜色
-    if (m_currentPhase == 1) {
-        // 正常阶段
-        if (m_heartRate > 100) {
-            m_heartRateLabel->setStyleSheet("color: #00FF00; font-size: 24px; font-weight: bold;");
-        } else {
-            m_heartRateLabel->setStyleSheet("color: #00FF00; font-size: 24px; font-weight: bold;");
-        }
-        m_spO2Label->setStyleSheet("color: #00FFFF; font-size: 24px; font-weight: bold;");
-        m_bpLabel->setStyleSheet("color: #FF8800; font-size: 24px; font-weight: bold;");
-    } else if (m_currentPhase == 2) {
-        // 警告阶段
-        m_heartRateLabel->setStyleSheet("color: yellow; font-size: 24px; font-weight: bold;");
-        m_spO2Label->setStyleSheet("color: yellow; font-size: 24px; font-weight: bold;");
-        m_bpLabel->setStyleSheet("color: yellow; font-size: 24px; font-weight: bold;");
+    updateDisplayColors();
 
-        // 在警告阶段使数字闪烁
-        static bool blink = false;
-        blink = !blink;
-
-        if (blink && m_heartRate > 150) {
-            m_heartRateLabel->setStyleSheet("color: red; font-size: 24px; font-weight: bold;");
-        }
-    } else if (m_currentPhase == 3) {
-        // 死亡阶段
-        if (m_heartRate < 20) {
-            m_heartRateLabel->setStyleSheet("color: red; font-size: 24px; font-weight: bold;");
-            m_spO2Label->setStyleSheet("color: red; font-size: 24px; font-weight: bold;");
-            m_bpLabel->setStyleSheet("color: red; font-size: 24px; font-weight: bold;");
-        } else {
-            m_heartRateLabel->setStyleSheet("color: orange; font-size: 24px; font-weight: bold;");
-            m_spO2Label->setStyleSheet("color: orange; font-size: 24px; font-weight: bold;");
-            m_bpLabel->setStyleSheet("color: orange; font-size: 24px; font-weight: bold;");
-        }
+    if (m_heartRate <= 0 && !m_isFlatlined) {
+        m_heartbeatTimer->stop();
+        m_isFlatlined = true;
     }
 
-            // 心跳为0时播放报警
-    if (m_heartRate <= 0) {
-        // 所有读数闪烁
-        static bool alarmBlink = false;
-        alarmBlink = !alarmBlink;
-
-        if (alarmBlink) {
-            m_heartRateLabel->setStyleSheet("color: red; font-size: 24px; font-weight: bold;");
-            m_spO2Label->setStyleSheet("color: red; font-size: 24px; font-weight: bold;");
-            m_bpLabel->setStyleSheet("color: red; font-size: 24px; font-weight: bold;");
-        } else {
-            m_heartRateLabel->setStyleSheet("color: black; font-size: 24px; font-weight: bold;");
-            m_spO2Label->setStyleSheet("color: black; font-size: 24px; font-weight: bold;");
-            m_bpLabel->setStyleSheet("color: black; font-size: 24px; font-weight: bold;");
-        }
-    }
-
-    // 如果心率有变化，更新心跳声音计时器
-    static int lastHeartRate = -1;
+    // 心率变化时更新定时器
+    static double lastHeartRate = -1;
     if (qAbs(m_heartRate - lastHeartRate) > 1) {
         updateHeartbeatTimer();
         lastHeartRate = m_heartRate;
     }
 }
 
+void ECGAnimation::updateDisplayColors()
+{
+    QString normalStyle = "font-size: 24px; font-weight: bold; font-family: 'Courier New';";
+
+    if (m_currentPhase == 1) {
+        // 正常阶段 - 绿色
+        m_heartRateLabel->setStyleSheet("color: #00FF00; " + normalStyle);
+        m_spO2Label->setStyleSheet("color: #00FFFF; " + normalStyle);
+        m_bpLabel->setStyleSheet("color: #FF8800; " + normalStyle);
+    } else if (m_currentPhase == 2) {
+        // 异常阶段 - 黄色闪烁
+        static bool warningBlink = false;
+        warningBlink = !warningBlink;
+        QString color = warningBlink ? "yellow" : "orange";
+        m_heartRateLabel->setStyleSheet("color: " + color + "; " + normalStyle);
+        m_spO2Label->setStyleSheet("color: " + color + "; " + normalStyle);
+        m_bpLabel->setStyleSheet("color: " + color + "; " + normalStyle);
+    } else if (m_currentPhase == 3) {
+        // 死亡阶段 - 红色闪烁
+        if (m_heartRate <= 0) {
+            static bool alarmBlink = false;
+            alarmBlink = !alarmBlink;
+            QString color = alarmBlink ? "red" : "darkred";
+            m_heartRateLabel->setStyleSheet("color: " + color + "; " + normalStyle);
+            m_spO2Label->setStyleSheet("color: " + color + "; " + normalStyle);
+            m_bpLabel->setStyleSheet("color: " + color + "; " + normalStyle);
+        } else {
+            m_heartRateLabel->setStyleSheet("color: red; " + normalStyle);
+            m_spO2Label->setStyleSheet("color: red; " + normalStyle);
+            m_bpLabel->setStyleSheet("color: red; " + normalStyle);
+        }
+    }
+}
+
+void ECGAnimation::onPhaseChanged()
+{
+    updateVideoForPhase();
+}
+
+// 属性设置方法
 void ECGAnimation::setAmplitude(qreal value)
 {
     m_amplitude = value;

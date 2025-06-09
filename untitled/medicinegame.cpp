@@ -205,8 +205,8 @@ MedicineGame::~MedicineGame()
     m_drawers.clear();
 }
 
-
-void MedicineGame::initGame(int medicineTypes, int rows, int cols, int operationCount,QString bg_pic)
+// 在 initGame() 方法末尾添加检查
+void MedicineGame::initGame(int medicineTypes, int rows, int cols, int operationCount, QString bg_pic)
 {
     // Set parameters
     m_rows = rows;
@@ -215,14 +215,14 @@ void MedicineGame::initGame(int medicineTypes, int rows, int cols, int operation
     // 重置移动计数
     m_moveCount = 0;
 
-    // 计算初始分数
+            // 计算初始分数
     m_score = 2000 + rows * cols * 100 + medicineTypes * 500;
 
-    // 开始计时器
+            // 开始计时器
     m_startTime = QTime::currentTime();
     m_timer->start(1000); // 每秒触发一次
 
-    // Clean up existing drawers
+            // Clean up existing drawers
     for (MedicineDrawer *drawer : m_drawers) {
         delete drawer;
     }
@@ -230,7 +230,7 @@ void MedicineGame::initGame(int medicineTypes, int rows, int cols, int operation
     m_operations.clear();
     m_playerOperations.clear();
 
-    // Ensure we have exactly the specified number of medicine types
+            // Ensure we have exactly the specified number of medicine types
     QStringList selectedMedicines;
     if (m_medicineNames.size() < medicineTypes) {
         qDebug() << "Warning: Not enough medicine names loaded!";
@@ -243,7 +243,7 @@ void MedicineGame::initGame(int medicineTypes, int rows, int cols, int operation
             shuffledNames.swapItemsAt(i, j);
         }
 
-        // Select exactly the specified number of medicine types
+                // Select exactly the specified number of medicine types
         for (int i = 0; i < medicineTypes && i < shuffledNames.size(); ++i) {
             selectedMedicines.append(shuffledNames[i]);
         }
@@ -251,19 +251,179 @@ void MedicineGame::initGame(int medicineTypes, int rows, int cols, int operation
 
     qDebug() << "Selected medicines:" << selectedMedicines;
 
-    // Initialize drawers with only the selected medicine types
+            // Initialize drawers with only the selected medicine types
     initDrawers(selectedMedicines);
 
-    // Generate medicine list
+            // Generate medicine list
     generateMedicineList();
 
-    // Perform random operations
+            // Perform random operations
     performRandomOperations(operationCount);
-
 
             // Set background
     setBackground("bg_challenge");
+
+    if (checkGameOver()) {
+        m_gameOver = true;
+        // 播放胜利音效
+        MusicManager::instance()->playEffect("win.wav");
+
+                // 使用延迟来确保界面完全显示后再显示提示和退出
+        QTimer::singleShot(100, this, [this]() {
+            // 显示开局即成功消息
+            QLabel *winLabel = new QLabel("开局即成功！", this);
+            winLabel->setStyleSheet("font-size: 24px; color: #008000; background-color: rgba(255, 255, 255, 180); padding: 10px; border-radius: 5px;");
+            winLabel->setAlignment(Qt::AlignCenter);
+
+            // 使用更可靠的定位方式
+            int labelWidth = 300;
+            int labelHeight = 100;
+            winLabel->setFixedSize(labelWidth, labelHeight);
+            winLabel->move((width() - labelWidth) / 2, (height() - labelHeight) / 2);
+            winLabel->show();
+            winLabel->raise();
+
+            qDebug() << "自定义关卡开局即胜利！";
+
+            // 1秒后发送游戏完成信号
+            QTimer::singleShot(1000, this, [this]() {
+                emit gameCompleted();
+            });
+        });
+    }
 }
+
+// 在 initCustomGame() 方法末尾添加检查
+void MedicineGame::initCustomGame(const QJsonObject& levelData)
+{
+    // 清理现有状态
+    for (MedicineDrawer *drawer : m_drawers) {
+        delete drawer;
+    }
+    m_drawers.clear();
+    m_operations.clear();
+    m_playerOperations.clear();
+    m_excludedMedicines.clear();
+    m_gameOver = false;
+
+            // 读取行列数
+    m_rows = levelData["rows"].toInt();
+    m_cols = levelData["cols"].toInt();
+
+            // 重置移动计数和分数
+    m_moveCount = 0;
+
+            // 计算初始分数
+    int medicineCount = 0;
+    QSet<QString> uniqueMedicines;
+
+            // 计算唯一药材数量
+    QJsonArray drawersData = levelData["drawers"].toArray();
+    for (const QJsonValue& drawerValue : drawersData) {
+        QJsonObject drawer = drawerValue.toObject();
+        uniqueMedicines.insert(drawer["leftMedicine"].toString());
+        uniqueMedicines.insert(drawer["rightMedicine"].toString());
+    }
+
+    medicineCount = uniqueMedicines.size();
+    m_score = 2000 + m_rows * m_cols * 100 + medicineCount * 500;
+
+            // 开始计时器
+    m_startTime = QTime::currentTime();
+    m_timer->start(1000);
+
+            // 创建抽屉
+    for (const QJsonValue& drawerValue : drawersData) {
+        QJsonObject drawer = drawerValue.toObject();
+        int row = drawer["row"].toInt();
+        int col = drawer["col"].toInt();
+        QString leftMedicine = drawer["leftMedicine"].toString();
+        QString rightMedicine = drawer["rightMedicine"].toString();
+        bool isOpen = drawer["isOpen"].toBool();
+
+                // 创建抽屉对象
+        MedicineDrawer* drawerObj = new MedicineDrawer(leftMedicine, rightMedicine);
+        drawerObj->setOpen(isOpen);
+
+                // 连接信号
+        connect(drawerObj, &MedicineDrawer::medicineClicked, this, &MedicineGame::onMedicineClicked);
+
+                // 添加到网格
+        m_drawerLayout->addWidget(drawerObj, row, col);
+
+                // 添加到抽屉列表
+        m_drawers.append(drawerObj);
+    }
+
+            // 设置目标药材清单
+    QMap<QString, int> targetList;
+    QJsonArray medicineListData = levelData["medicineList"].toArray();
+    for (const QJsonValue& medValue : medicineListData) {
+        QJsonObject med = medValue.toObject();
+        QString name = med["name"].toString();
+        int count = med["count"].toInt();
+        targetList[name] = count;
+    }
+
+            // 设置药材清单
+    m_medicineList->setTargetList(targetList);
+
+            // 读入关卡文件中的custom_operation作为operation
+    if (levelData.contains("custom_operations")) {
+        QJsonArray operationsArray = levelData["custom_operations"].toArray();
+        m_operations.clear();
+
+                // 读取自定义操作
+        for (const QJsonValue& opValue : operationsArray) {
+            QString operation = opValue.toString();
+            m_operations.append(operation);
+        }
+
+        qDebug() << "加载自定义操作：" << m_operations;
+    } else {
+        qWarning() << "没有找到自定义操作记录！";
+    }
+
+            // 更新当前药材清单
+    m_medicineList->setCurrentList(calculateCurrentList());
+
+            // 设置背景
+    setBackground("bg_custom");
+
+            // 确保不是设计模式
+    m_designMode = false;
+
+    if (checkGameOver()) {
+        m_gameOver = true;
+        // 播放胜利音效
+        MusicManager::instance()->playEffect("win.wav");
+
+                // 使用延迟来确保界面完全显示后再显示提示和退出
+        QTimer::singleShot(100, this, [this]() {
+            // 显示开局即成功消息
+            QLabel *winLabel = new QLabel("开局即成功！", this);
+            winLabel->setStyleSheet("font-size: 24px; color: #008000; background-color: rgba(255, 255, 255, 180); padding: 10px; border-radius: 5px;");
+            winLabel->setAlignment(Qt::AlignCenter);
+
+            // 使用更可靠的定位方式
+            int labelWidth = 300;
+            int labelHeight = 100;
+            winLabel->setFixedSize(labelWidth, labelHeight);
+            winLabel->move((width() - labelWidth) / 2, (height() - labelHeight) / 2);
+            winLabel->show();
+            winLabel->raise();
+
+            qDebug() << "自定义关卡开局即胜利！";
+
+            // 1秒后发送游戏完成信号
+            QTimer::singleShot(1000, this, [this]() {
+                emit gameCompleted();
+            });
+        });
+    }
+}
+
+
 
 // Updated initDrawers method to use only selected medicines
 void MedicineGame::initDrawers(const QStringList &selectedMedicines)
@@ -775,103 +935,4 @@ QJsonObject MedicineGame::finishDesign(const QJsonObject& originalData)
 
     return updatedLevelData;
 }
-void MedicineGame::initCustomGame(const QJsonObject& levelData)
-{
 
-    // 清理现有状态
-    for (MedicineDrawer *drawer : m_drawers) {
-        delete drawer;
-    }
-    m_drawers.clear();
-    m_operations.clear();
-    m_playerOperations.clear();
-    m_excludedMedicines.clear();
-    m_gameOver = false;
-
-            // 读取行列数
-    m_rows = levelData["rows"].toInt();
-    m_cols = levelData["cols"].toInt();
-
-            // 重置移动计数和分数
-    m_moveCount = 0;
-
-            // 计算初始分数
-    int medicineCount = 0;
-    QSet<QString> uniqueMedicines;
-
-            // 计算唯一药材数量
-    QJsonArray drawersData = levelData["drawers"].toArray();
-    for (const QJsonValue& drawerValue : drawersData) {
-        QJsonObject drawer = drawerValue.toObject();
-        uniqueMedicines.insert(drawer["leftMedicine"].toString());
-        uniqueMedicines.insert(drawer["rightMedicine"].toString());
-    }
-
-    medicineCount = uniqueMedicines.size();
-    m_score = 2000 + m_rows * m_cols * 100 + medicineCount * 500;
-
-            // 开始计时器
-    m_startTime = QTime::currentTime();
-    m_timer->start(1000);
-
-            // 创建抽屉
-    for (const QJsonValue& drawerValue : drawersData) {
-        QJsonObject drawer = drawerValue.toObject();
-        int row = drawer["row"].toInt();
-        int col = drawer["col"].toInt();
-        QString leftMedicine = drawer["leftMedicine"].toString();
-        QString rightMedicine = drawer["rightMedicine"].toString();
-        bool isOpen = drawer["isOpen"].toBool();
-
-                // 创建抽屉对象
-        MedicineDrawer* drawerObj = new MedicineDrawer(leftMedicine, rightMedicine);
-        drawerObj->setOpen(isOpen);
-
-                // 连接信号
-        connect(drawerObj, &MedicineDrawer::medicineClicked, this, &MedicineGame::onMedicineClicked);
-
-                // 添加到网格
-        m_drawerLayout->addWidget(drawerObj, row, col);
-
-                // 添加到抽屉列表
-        m_drawers.append(drawerObj);
-    }
-
-            // 设置目标药材清单
-    QMap<QString, int> targetList;
-    QJsonArray medicineListData = levelData["medicineList"].toArray();
-    for (const QJsonValue& medValue : medicineListData) {
-        QJsonObject med = medValue.toObject();
-        QString name = med["name"].toString();
-        int count = med["count"].toInt();
-        targetList[name] = count;
-    }
-
-            // 设置药材清单
-    m_medicineList->setTargetList(targetList);
-
-    // 读入关卡文件中的custom_operation作为operation
-    if (levelData.contains("custom_operations")) {
-        QJsonArray operationsArray = levelData["custom_operations"].toArray();
-        m_operations.clear();
-
-        // 读取自定义操作
-        for (const QJsonValue& opValue : operationsArray) {
-            QString operation = opValue.toString();
-            m_operations.append(operation);
-        }
-
-        qDebug() << "加载自定义操作：" << m_operations;
-    } else {
-        qWarning() << "没有找到自定义操作记录！";
-    }
-
-    // 更新当前药材清单
-    m_medicineList->setCurrentList(calculateCurrentList());
-
-    // 设置背景
-    setBackground("bg_custom");
-
-    // 确保不是设计模式
-    m_designMode = false;
-}

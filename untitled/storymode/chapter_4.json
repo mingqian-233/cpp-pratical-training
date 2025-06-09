@@ -1,28 +1,79 @@
 {
-  "title": "4",
-  "background": "bg_story1",
-  "dialogues": [
+  "title": "第四章：诡变",
+  "background": "bg_pharmacy",
+  "pre_game_dialogues": [
     {
-      "character": "李师傅",
-      "avatar": "i_nervous.png",
-      "text": "孩子，你已经跟着我学了三个月了，今天我要考考你对药材的认识。"
+      "character": "（画外音）",
+      "avatar": null,
+      "music": "BGM_Chapter4_NightSuspense.mp3",
+      "text": "入太医署数月，我凭借勤奋和《神农残卷》的帮助，医术进步神速，孙方明前辈也对我颇为赏识。一切似乎都在向好的方向发展，直到那个不寻常的夜晚。"
     },
     {
-      "character": "主角",
-      "avatar": "i_smile.png",
-      "text": "师傅，我一定不会让您失望的！"
+      "character": "常安",
+      "avatar": "changan_nervous.png",
+      "text": "（今夜轮到我值守御药房，这里存放着大量珍稀药材…嗯？什么味道…）"
     },
     {
-      "character": "李师傅",
-      "avatar": "i_surprise.png",
-      "text": "接下来要认真了！",
-      "music": "challenge.mp3"
+      "character": "（画外音）",
+      "avatar": null,
+      "text": "一股若有若无的血腥味钻入鼻孔，绝非寻常药材所有。我警觉地站起身，奶龙也似乎察觉到了异样，从假寐中“醒”来。"
+    },
+    {
+      "character": "奶龙",
+      "avatar": "nailong_worried.png",
+      "text": "咕叽？（常安，这里有种很奇怪的气息，不是人类，也不是普通的妖邪。）"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_surprised.png",
+      "background": "bg_pharmacy_dead",
+      "text": "（提灯向药房深处走去，血腥味越来越浓。绕过一排药柜，眼前的景象让我倒吸一口凉气！）只见一名看管毒药库的小吏歪倒在地，鲜血染红了地面！"
+    },
+    {
+      "character": "（画外音）",
+      "avatar": null,
+      "music": "BGM_Chapter4_DragonDream.mp3",
+      "background": "bg_nightsky",
+      "text": "就在我准备报官时，窗外月光被乌云吞噬，一股强烈的威压从天而降！一个低沉威严的声音在我脑海中炸响！"
+    },
+    {
+      "character": "真龙（？？）",
+      "avatar": null,
+      "text": "凡人…汝可见龙？…上古封印…松动…灾祸将至…汝…有缘人…"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_surprised.png",
+      "text": "（真龙…托梦…？这到底是怎么回事？！）巨大的恐惧和混乱冲击着我的大脑，我必须先冷静下来，整理一下思绪！"
     }
   ],
   "game": {
-    "medicineTypes": 5,
-    "rows": 3,
-    "cols": 3,
-    "operationCount": 1
-  }
+    "medicineTypes": 6,
+    "rows": 4,
+    "cols": 4,
+    "operationCount": 5
+  },
+  "post_game_dialogues": [
+    {
+      "character": "（画外音）",
+      "avatar": null,
+      "background": "bg_pharmacy_dead",
+      "text": "我强迫自己整理好凌乱的药柜，以此来平复狂跳的心脏。那股恐怖的威压已经散去，但真龙的话语却像烙印一样刻在我的脑海里。"
+    },
+    {
+      "character": "奶龙",
+      "avatar": "nailong_worried.png",
+      "text": "常安，你快点炼药救人啊！愣着干什么？"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_sad.png",
+      "text": "他已经没救了，奶龙…而且，刚刚发生的事情，远比这件血案更可怕。一个巨大的危机…可能要来了。"
+    },
+    {
+      "character": "（画外音）",
+      "avatar": null,
+      "text": "血案最终成了悬案。但我心中的阴霾却越来越重。真龙的警告，上古封印的松动，都让我感到一种莫名的危机正在逼近。"
+    }
+  ]
 }

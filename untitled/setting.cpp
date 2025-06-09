@@ -7,7 +7,7 @@
 #include <QLabel>
 #include <QApplication>
 #include <QScreen>
-
+#include <QSettings>
 // 初始化静态成员变量
 Setting* Setting::m_instance = nullptr;
 
@@ -26,6 +26,16 @@ Setting* Setting::instance()
     }
     return m_instance;
 }
+// 添加保存设置的函数
+void Setting::saveSettings()
+{
+    QSettings settings("mingqian233", "HerbalOdyssey");
+    settings.setValue("audio/mute", isMute);
+    settings.setValue("audio/masterVolume", masterSlider->value());
+    settings.setValue("audio/musicVolume", musicSlider->value());
+    settings.setValue("audio/effectVolume", effectSlider->value());
+    settings.setValue("video/fullscreen", isFullScreen);
+}
 
 Setting::Setting(QWidget *parent)
     : QDialog(parent)
@@ -33,7 +43,20 @@ Setting::Setting(QWidget *parent)
       , isFullScreen(false)  // 默认为非全屏
 {
     setWindowTitle("设置");
+
+    // 从配置文件读取设置
+    QSettings settings("mingqian233", "HerbalOdyssey");
+    isMute = settings.value("audio/mute", false).toBool();
+    isFullScreen = settings.value("video/fullscreen", true).toBool(); // 默认全屏
+
     setupUI();
+
+    // 设置初始值
+    muteCheckBox->setChecked(isMute);
+    fullscreenCheckBox->setChecked(isFullScreen);
+    masterSlider->setValue(settings.value("audio/masterVolume", 100).toInt());
+    musicSlider->setValue(settings.value("audio/musicVolume", 100).toInt());
+    effectSlider->setValue(settings.value("audio/effectVolume", 100).toInt());
 
     // 连接信号槽
     connect(muteCheckBox, &QCheckBox::toggled, this, &Setting::onMuteToggled);
@@ -84,15 +107,13 @@ void Setting::setupUI()
     layout->addWidget(returnToMainButton, 0, Qt::AlignCenter);
     setLayout(layout);
 }
-// ... existing code ...
+
 
 // 添加返回主菜单按钮处理函数
 void Setting::onReturnToMainClicked()
 {
     // 应用当前设置
     applySettings();
-    MusicManager::instance()->setMusic("taqing.wav");
-    // 返回主菜单
     MainWindow::instance()->switchToMainPage();
 
     // 关闭设置对话框
@@ -147,7 +168,6 @@ void Setting::onEffectVolumeChanged(int value)
 {
     MusicManager::instance()->setEffectVolume(value / 100.0);
 }
-
 void Setting::onFullscreenToggled(bool checked)
 {
     isFullScreen = checked;
@@ -158,6 +178,17 @@ void Setting::onFullscreenToggled(bool checked)
             mainWindow->showFullScreen();
         } else {
             mainWindow->showNormal();
+            // 恢复窗口大小并居中
+            mainWindow->resize(1280, 720);
+            QScreen *screen = QGuiApplication::primaryScreen();
+            if (screen) {
+                QRect screenGeometry = screen->availableGeometry();
+                int x = (screenGeometry.width() - mainWindow->width()) / 2;
+                int y = (screenGeometry.height() - mainWindow->height()) / 2;
+                mainWindow->move(x, y);
+            }
         }
     }
+
+    saveSettings(); // 保存设置
 }

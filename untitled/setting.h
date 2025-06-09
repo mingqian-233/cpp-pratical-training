@@ -40,6 +40,8 @@ private slots:
     void onFullscreenToggled(bool checked);
 
 private:
+    void saveSettings();
+private:
     explicit Setting(QWidget *parent = nullptr);
     static Setting* m_instance;
 

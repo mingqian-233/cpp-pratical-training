@@ -309,7 +309,6 @@ void SpaceTimeVortexAnimation::resizeEvent(QResizeEvent *event)
 void SpaceTimeVortexAnimation::mousePressEvent(QMouseEvent *event)
 {
     // 点击任意位置跳过动画
-    skipAnimation();
     event->accept();
 }
 

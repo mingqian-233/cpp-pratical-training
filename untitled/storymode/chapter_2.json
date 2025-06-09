@@ -1,28 +1,71 @@
 {
-  "title": "2",
-  "background": "bg_story1",
-  "dialogues": [
+  "title": "第二章：初醒",
+  "background": "bg_grasshouse",
+  "pre_game_dialogues": [
     {
-      "character": "发撒单位",
-      "avatar": "i_nervous.png",
-      "text": "尼玛，代码好难写"
+      "character": "常安",
+      "avatar": "changan_idle.png",
+      "music": "BGM_Chapter2.mp3",
+      "text": "我……这是在哪？身体好陌生……我记得我不是已经死了吗？"
     },
     {
-      "character": "主角",
-      "avatar": "i_smile.png",
-      "text": "师傅，我一定不会让您失望的！"
+      "character": "奶龙",
+      "avatar": "nailong_idle.png",
+      "sfx": "nailong.wav",
+      "text": "咕叽？"
     },
     {
-      "character": "李师傅",
-      "avatar": "i_surprise.png",
-      "text": "245624投入软饭",
-      "music": "ch01.mp3"
+      "character": "奶龙",
+      "avatar": "nailong_happy.png",
+      "sfx": "nailong.wav",
+      "text": "你好呀，常安！我可是上古神兽奶龙，我感受到你身边有非常特别的祥瑞气息，认定你将来一定能成为一个改变世界的大人物！"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_happy.png",
+      "text": "好吧，既然在原来的世界我已经死了，那就在这个世界好好活着，和奶龙闯出一番大事业吧！"
+    },
+    {
+      "character": "中年妇人",
+      "avatar": "villager_woman_anxious.png",
+      "background": "bg_village",
+      "text": "小安啊，你快去看看村头的张爷爷，他今天早上咳得厉害，人都有些糊涂了！"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_thinking.png",
+      "background": "bg_elderhouse",
+      "sfx": "sfx_paper_rustle.mp3",
+      "text": "（来到张爷爷家，他面色潮红，咳嗽不止。）我在床头木匣里，发现了几卷泛黄的竹简——《神农残卷》！"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_thinking.png",
+      "text": "（知识涌入脑海）原来如此，张爷爷是风寒入体，兼有痰湿。我需要根据残卷的指引，配齐药材。"
     }
   ],
   "game": {
-    "medicineTypes": 2,
-    "rows": 3,
-    "cols": 3,
+    "medicineTypes": 3,
+    "rows": 2,
+    "cols": 2,
     "operationCount": 1
-  }
+  },
+  "post_game_dialogues": [
+    {
+      "character": "常安",
+      "avatar": "changan_idle.png",
+      "sfx": "sfx_potion_pour.mp3",
+      "text": "好了，药材已经配齐，马上煎药。"
+    },
+    {
+      "character": "张爷爷",
+      "avatar": "villager_oldman_grateful.png",
+      "text": "咳咳…喝了你的药，感觉好多了。谢谢你…小安…"
+    },
+    {
+      "character": "常安",
+      "avatar": "changan_happy.png",
+      "text": "（心中涌起一股成就感。）这感觉，和解开一个BUG竟有几分相似，却又更加温暖。我对这个未知的世界，第一次生出了几分真正的期待。"
+    }
+  ]
 }
